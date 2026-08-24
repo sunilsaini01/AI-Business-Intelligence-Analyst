@@ -1,0 +1,62 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      ANALYTICS_DATABASE_URL: postgresql://${READONLY_DB_USER}:${READONLY_DB_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    ports:
+      - "8010:8000"
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - ./app:/app/app
+      - ./scripts:/app/scripts
+      - ./data:/app/data
+      - ./tests:/app/tests
+      - ./evaluation:/app/evaluation
+      - ./pyproject.toml:/app/pyproject.toml
+      # Phase 12: mounted read-only so tests/frontend/ can pytest-import the
+      # pure frontend modules (api_client.py, polling.py, progress.py,
+      # report_view.py, chart_builder.py, health.py — none of which import
+      # `streamlit`) via tests/frontend/conftest.py adding this path to
+      # sys.path. The api image does not install streamlit; the frontend
+      # image is the one that actually runs app.py.
+      - ./frontend:/app/frontend:ro
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    depends_on:
+      - api
+    environment:
+      API_BASE_URL: http://api:8000
+    ports:
+      - "8511:8501"
+    command: streamlit run app.py --server.address=0.0.0.0 --server.port=8501
+    volumes:
+      - ./frontend:/frontend
+
+volumes:
+  pgdata:

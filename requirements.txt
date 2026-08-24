@@ -1,0 +1,51 @@
+# --- Orchestration ---
+langgraph==0.2.60
+langchain-core==0.3.28
+
+# --- API ---
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+pydantic==2.10.4
+pydantic-settings==2.7.1
+
+# --- Database ---
+sqlalchemy[asyncio]==2.0.36
+asyncpg==0.30.0
+alembic==1.14.0
+
+# --- SQL parsing / validation (Sec 4 safety layer) ---
+sqlglot==25.34.1
+
+# --- Data analysis ---
+pandas==2.2.3
+numpy==2.2.1
+
+# --- ML (scikit-learn baseline, XGBoost when justified, SHAP for explainability) ---
+scikit-learn==1.6.0
+xgboost==2.1.3
+shap==0.46.0
+
+# --- Visualization ---
+plotly==5.24.1
+matplotlib==3.10.0
+kaleido==0.2.1
+
+# --- LLM ---
+anthropic==0.42.0
+groq==0.13.1
+
+# --- Frontend ---
+streamlit==1.41.1
+httpx==0.28.1
+
+# --- Synthetic data seeding ---
+faker==33.1.0
+
+# --- Testing ---
+pytest==8.3.4
+pytest-asyncio==0.25.0
+pytest-cov==6.0.0
+
+# --- Ops ---
+python-dotenv==1.0.1
+structlog==24.4.0
