@@ -1,0 +1,501 @@
+customer_id,name,segment,region_id,signup_date,status
+1,"Rodriguez, Figueroa and Sanchez",Mid-Market,1,2025-12-19,churned
+2,Doyle Ltd,Mid-Market,5,2025-07-08,active
+3,"Mcclain, Miller and Henderson",SMB,4,2025-06-19,active
+4,Davis and Sons,SMB,3,2025-08-15,active
+5,"Guzman, Hoffman and Baldwin",SMB,3,2026-01-29,churned
+6,"Gardner, Robinson and Lawrence",Mid-Market,6,2025-06-27,active
+7,Blake and Sons,Mid-Market,1,2026-08-08,active
+8,"Henderson, Ramirez and Lewis",SMB,5,2025-11-18,active
+9,Garcia-James,SMB,2,2026-07-09,churned
+10,Abbott-Munoz,SMB,1,2026-03-22,active
+11,Blair PLC,SMB,4,2025-08-22,active
+12,Dudley Group,Mid-Market,6,2025-06-19,active
+13,Arnold Ltd,SMB,5,2026-04-27,active
+14,"Mcclure, Ward and Lee",SMB,5,2025-08-20,churned
+15,Williams and Sons,Enterprise,5,2025-06-30,active
+16,Galloway-Wyatt,SMB,5,2026-08-18,active
+17,James Group,SMB,4,2025-11-20,active
+18,"Flowers, Martin and Kelly",SMB,1,2025-03-02,active
+19,"Adams, Zuniga and Wong",SMB,6,2025-11-27,active
+20,"Reid, Ferguson and Sanchez",SMB,3,2025-11-07,active
+21,Gray-Mayo,SMB,4,2026-07-09,active
+22,"Watts, Robinson and Nguyen",SMB,3,2026-04-08,active
+23,Perez Inc,SMB,2,2025-05-27,active
+24,Morales-Jones,SMB,6,2025-05-03,active
+25,"Walter, Edwards and Rios",Mid-Market,5,2026-02-01,active
+26,Wilkerson-Day,SMB,4,2025-03-01,active
+27,Baker and Sons,SMB,3,2025-08-13,active
+28,"Hoffman, Baker and Richards",SMB,5,2025-04-25,churned
+29,"Ross, Robinson and Bright",Mid-Market,4,2025-02-13,active
+30,"Snyder, Campos and Callahan",Mid-Market,3,2026-08-11,active
+31,Burton Ltd,SMB,3,2025-03-27,active
+32,Carlson-Cruz,SMB,2,2025-02-06,active
+33,"Ferrell, Rice and Maddox",SMB,1,2026-08-20,active
+34,Frazier Inc,SMB,4,2025-05-26,active
+35,"Dyer, Potter and Mack",SMB,6,2026-06-10,churned
+36,Rodriguez-Graham,SMB,1,2025-02-19,churned
+37,Smith-Bowen,SMB,6,2025-05-05,active
+38,"Baker, Mason and White",SMB,5,2025-04-09,active
+39,Harrell LLC,SMB,2,2026-04-04,churned
+40,"Romero, Gonzalez and Brooks",SMB,4,2026-02-11,active
+41,Ryan PLC,Mid-Market,1,2025-11-16,active
+42,George Group,SMB,5,2025-06-27,churned
+43,Rodriguez LLC,Enterprise,5,2025-03-26,active
+44,Allen-Allen,SMB,3,2026-01-11,active
+45,"Arroyo, Miller and Tucker",Mid-Market,1,2025-06-20,active
+46,Spence PLC,Enterprise,6,2026-01-24,churned
+47,Anderson Group,Enterprise,3,2026-03-24,active
+48,"Martin, Rose and Obrien",Mid-Market,6,2026-06-30,active
+49,Hickman Ltd,Mid-Market,5,2025-11-27,churned
+50,"Harris, Collins and Carney",Mid-Market,5,2025-02-03,active
+51,"Brooks, Lam and Hayes",Mid-Market,5,2025-07-21,active
+52,Walker LLC,SMB,2,2026-07-03,active
+53,Chapman and Sons,SMB,3,2025-12-21,active
+54,"Robinson, Jones and Welch",SMB,3,2026-02-11,churned
+55,Jones Inc,Mid-Market,3,2025-11-05,active
+56,Jones-Young,SMB,1,2025-05-10,active
+57,"Washington, Ryan and Cummings",SMB,4,2026-07-29,active
+58,"Johnston, Sanchez and Kennedy",Mid-Market,1,2026-05-15,active
+59,Lee-Davis,SMB,5,2026-09-27,active
+60,Gomez-Jenkins,SMB,5,2026-07-04,active
+61,"Brown, Valdez and Lucas",SMB,6,2025-07-27,churned
+62,Powell LLC,SMB,5,2025-07-05,active
+63,Wright and Sons,SMB,3,2025-07-01,active
+64,"West, Henderson and Ramirez",SMB,6,2026-08-11,active
+65,Baxter Inc,SMB,3,2026-01-04,active
+66,Morton-Chase,SMB,2,2025-11-03,active
+67,Williams PLC,SMB,6,2026-09-10,active
+68,Novak and Sons,Mid-Market,3,2026-02-01,churned
+69,Russell Group,SMB,1,2026-08-06,active
+70,Hancock Inc,Enterprise,3,2026-09-20,active
+71,Gray Group,Enterprise,5,2025-03-21,active
+72,House-Glover,SMB,2,2025-09-08,active
+73,Henderson-Bernard,SMB,3,2026-04-21,active
+74,"Stanley, Tucker and Lee",SMB,1,2026-06-08,active
+75,Novak PLC,Mid-Market,5,2025-05-01,active
+76,"Daniels, Adkins and Brown",Mid-Market,3,2025-08-12,active
+77,"Woods, Calhoun and Schmidt",Mid-Market,2,2025-12-30,active
+78,Yu Inc,SMB,2,2026-05-31,active
+79,Jones Inc,Mid-Market,4,2025-04-10,active
+80,"Hensley, Powell and David",SMB,5,2026-01-31,active
+81,"Sanchez, Wheeler and Harvey",Mid-Market,6,2025-07-30,churned
+82,Sandoval-Cunningham,SMB,3,2025-06-12,active
+83,Donovan-Harris,Mid-Market,1,2025-12-10,active
+84,"Edwards, Baker and Anderson",Mid-Market,5,2025-10-09,active
+85,"Evans, Stewart and Walton",SMB,4,2026-02-21,active
+86,Smith PLC,Mid-Market,5,2025-08-12,active
+87,"Ferrell, Jones and Lewis",SMB,1,2026-06-14,active
+88,Anderson-Bailey,Mid-Market,2,2025-03-20,active
+89,Suarez LLC,SMB,5,2026-07-08,active
+90,Moore-Bass,Enterprise,5,2025-02-19,active
+91,"Turner, Riggs and Roman",SMB,3,2026-04-22,churned
+92,"Smith, Montoya and Evans",Enterprise,5,2025-08-29,active
+93,"Garcia, Humphrey and Baker",Mid-Market,6,2025-09-21,churned
+94,Newton and Sons,SMB,3,2025-02-12,active
+95,Campbell-Clark,Mid-Market,6,2026-04-02,active
+96,Harris-Walters,Mid-Market,2,2025-05-12,churned
+97,Wagner-King,Enterprise,2,2026-03-07,churned
+98,Davis Group,SMB,5,2026-04-16,churned
+99,Williams-Cook,SMB,4,2026-06-28,churned
+100,Walsh LLC,SMB,1,2026-04-06,active
+101,Figueroa PLC,Mid-Market,5,2025-08-02,churned
+102,"Patterson, Smith and Jones",SMB,2,2026-04-24,active
+103,"Mckee, Gardner and Davenport",SMB,5,2026-06-16,active
+104,"Tran, Jordan and Williams",SMB,1,2025-08-12,active
+105,Nolan-Flynn,SMB,5,2025-04-17,churned
+106,Nolan and Sons,SMB,5,2026-07-25,active
+107,"Wright, Garcia and Deleon",Mid-Market,5,2025-05-01,churned
+108,Dickson-Brady,Mid-Market,4,2026-01-26,active
+109,Hancock and Sons,SMB,3,2025-06-24,active
+110,Johnson-Doyle,SMB,5,2025-04-18,active
+111,Patton-Jenkins,Enterprise,2,2026-05-17,active
+112,"Shields, Cochran and Adams",SMB,5,2025-04-29,active
+113,"Rodriguez, Brennan and Garrison",SMB,4,2026-03-14,churned
+114,Gonzalez Group,SMB,3,2026-03-28,churned
+115,Torres-Pope,Mid-Market,4,2025-03-09,active
+116,Walker Ltd,SMB,4,2025-05-16,active
+117,Ross LLC,Mid-Market,1,2026-05-28,churned
+118,Rasmussen LLC,Mid-Market,1,2025-12-05,active
+119,May-Ross,SMB,2,2025-04-15,active
+120,"Rivera, Johnson and Wiley",Mid-Market,1,2026-09-25,active
+121,White-Estes,Mid-Market,3,2025-07-11,churned
+122,Johnson-Carlson,SMB,5,2025-02-03,churned
+123,Chandler-Edwards,SMB,4,2026-08-15,active
+124,"Joyce, Wilson and Lam",SMB,3,2025-02-11,active
+125,Scott Ltd,SMB,6,2026-01-02,active
+126,Smith-Frost,SMB,4,2026-09-25,active
+127,"Mcdaniel, Bentley and Mclaughlin",Enterprise,1,2026-01-17,active
+128,Diaz Inc,SMB,5,2026-01-21,active
+129,"Mccall, Hanson and Alvarado",SMB,4,2025-09-24,active
+130,Cortez LLC,Mid-Market,4,2025-04-18,active
+131,"Parker, Ortiz and Powell",SMB,4,2026-01-14,active
+132,Spencer-Lee,Enterprise,4,2026-07-29,churned
+133,"Bentley, Byrd and Orr",Mid-Market,1,2025-03-28,active
+134,"Carroll, Sullivan and Bass",SMB,4,2026-07-19,active
+135,Mitchell-Jordan,SMB,5,2025-10-10,active
+136,"Lawson, Morris and Ramos",Enterprise,2,2025-12-22,active
+137,"Lewis, Kennedy and Santana",Mid-Market,4,2025-05-12,active
+138,"Jackson, Miller and Robertson",Enterprise,1,2026-02-12,active
+139,"Harvey, Davis and Crane",SMB,3,2025-05-22,active
+140,Chambers and Sons,Mid-Market,3,2025-07-16,active
+141,Hernandez Inc,Mid-Market,6,2026-04-14,active
+142,Riggs PLC,SMB,2,2025-03-03,churned
+143,Gibson Ltd,SMB,2,2025-10-29,churned
+144,"Lee, Horton and Snyder",Mid-Market,3,2026-01-27,active
+145,Hernandez Ltd,SMB,6,2025-04-22,active
+146,Stafford Inc,SMB,6,2025-07-29,active
+147,Robinson-Brock,Mid-Market,1,2025-08-28,active
+148,"Holmes, Williams and Wright",SMB,2,2026-03-10,churned
+149,Bryant Group,SMB,5,2026-09-15,churned
+150,"Schmidt, Hansen and Stewart",SMB,1,2026-06-22,churned
+151,Salazar-Ball,SMB,6,2025-05-26,active
+152,"Simmons, Meadows and Griffin",Enterprise,2,2025-02-12,active
+153,Manning Group,Mid-Market,6,2025-03-04,churned
+154,Green-Wright,SMB,2,2026-01-28,active
+155,"Ramirez, Strickland and Washington",Enterprise,3,2025-05-06,active
+156,Hill Inc,Mid-Market,4,2025-06-21,active
+157,"Mitchell, Nelson and Flores",SMB,1,2026-06-29,active
+158,"Miller, Hernandez and Reyes",Mid-Market,4,2026-07-15,active
+159,Mccarthy Inc,SMB,4,2026-06-24,churned
+160,Russell-Daniels,Enterprise,5,2025-07-04,active
+161,Brown-Wall,Mid-Market,6,2026-02-11,churned
+162,Stein-Silva,Mid-Market,4,2026-02-06,active
+163,"Smith, Gilmore and Johnston",SMB,3,2025-05-24,active
+164,Smith-Bell,Mid-Market,3,2026-01-02,churned
+165,Castaneda-Ashley,SMB,3,2025-12-16,churned
+166,Medina-Navarro,SMB,5,2025-09-29,churned
+167,"Hurst, Freeman and Nelson",SMB,2,2026-05-02,active
+168,Johnson-Rogers,Mid-Market,2,2026-03-18,churned
+169,"Yates, Ramsey and Pittman",SMB,3,2025-12-20,churned
+170,Hooper PLC,Enterprise,1,2026-04-16,churned
+171,Meadows PLC,Mid-Market,1,2026-05-09,active
+172,"Alvarado, Miller and Patterson",SMB,1,2026-01-10,active
+173,White-Green,SMB,5,2025-07-13,churned
+174,Lewis-Murphy,SMB,5,2026-05-06,churned
+175,Ramirez-Bean,Mid-Market,5,2026-04-11,active
+176,King-Miller,Mid-Market,3,2026-09-19,churned
+177,Curry Inc,SMB,5,2025-05-02,active
+178,Walker-Jones,Mid-Market,1,2025-10-13,active
+179,"Williams, Johnson and Wright",SMB,6,2026-08-15,active
+180,Howell and Sons,Mid-Market,4,2025-12-09,active
+181,Wells Inc,Enterprise,6,2026-08-26,active
+182,"Gould, Marshall and Scott",Mid-Market,1,2025-02-08,active
+183,Jackson-Lawson,Mid-Market,3,2025-02-22,active
+184,"Higgins, Strickland and Martin",Mid-Market,5,2026-05-29,active
+185,Rodriguez-Johnson,SMB,3,2025-09-06,active
+186,Johnston-Odonnell,SMB,3,2025-12-13,active
+187,Sanders-Espinoza,SMB,1,2025-10-18,active
+188,Vargas Ltd,SMB,3,2025-10-06,active
+189,Garcia LLC,Mid-Market,2,2026-08-24,active
+190,"Burke, Martinez and Riggs",Mid-Market,2,2025-03-30,active
+191,Reed Group,Mid-Market,5,2026-05-14,active
+192,"Wood, Hunter and Peterson",SMB,4,2026-07-25,active
+193,Short-Garcia,Mid-Market,4,2026-03-06,active
+194,Reid-Poole,SMB,3,2025-09-28,active
+195,"Hernandez, Thompson and Boyd",SMB,6,2025-05-08,active
+196,"Nelson, Morton and Medina",Mid-Market,1,2026-03-21,churned
+197,Marshall-Petersen,Enterprise,3,2025-11-12,active
+198,"Adams, Christian and Rivas",Mid-Market,1,2025-05-02,churned
+199,Ramirez Group,SMB,3,2025-09-06,active
+200,Christensen PLC,Mid-Market,6,2026-09-06,active
+201,"Barnett, Rogers and Snyder",SMB,3,2025-07-11,active
+202,White-Lewis,Mid-Market,6,2025-05-20,active
+203,Peterson-Beard,Mid-Market,3,2026-03-21,active
+204,"Beard, Peters and Black",SMB,5,2025-06-01,active
+205,Miller Ltd,SMB,3,2026-08-12,active
+206,Freeman-Chang,SMB,2,2026-07-06,churned
+207,"Alvarez, Joseph and West",Enterprise,5,2026-09-20,active
+208,Davis and Sons,SMB,6,2026-08-08,churned
+209,Holt-Torres,Mid-Market,2,2025-06-28,active
+210,"Wood, Tran and Cooper",Mid-Market,5,2025-06-09,active
+211,"Pierce, Bell and Chavez",SMB,2,2025-08-27,active
+212,King-Martinez,SMB,5,2025-11-12,churned
+213,Stewart Ltd,Enterprise,5,2026-07-19,active
+214,"Tapia, Vaughn and Lee",SMB,3,2026-04-21,active
+215,"Washington, Hardy and Bray",SMB,5,2026-02-26,active
+216,"Carlson, Hooper and Wall",Mid-Market,2,2026-07-18,active
+217,Perez-White,Mid-Market,1,2026-02-27,active
+218,Erickson and Sons,Enterprise,1,2025-09-18,churned
+219,Williams-Brown,SMB,3,2025-10-09,active
+220,Terry-Martinez,SMB,6,2025-12-11,active
+221,Garcia-Smith,SMB,1,2025-03-26,churned
+222,Harrison-Alexander,SMB,3,2026-04-26,active
+223,Sheppard LLC,SMB,5,2026-03-03,active
+224,Wilson-Jones,SMB,2,2026-04-20,active
+225,Jones-Soto,SMB,5,2025-12-21,active
+226,Hernandez PLC,SMB,2,2026-05-21,active
+227,Miller-Wright,SMB,5,2026-08-30,churned
+228,"Duran, Obrien and Gibbs",Mid-Market,4,2026-01-12,churned
+229,Rowe Group,Mid-Market,4,2025-10-28,active
+230,Kerr-Evans,SMB,2,2025-04-05,churned
+231,"Branch, Torres and Oliver",SMB,3,2026-05-18,active
+232,"Choi, Garcia and Farmer",SMB,6,2026-08-02,active
+233,"Clark, Guerrero and Moore",SMB,1,2026-03-31,churned
+234,Arnold and Sons,SMB,5,2026-07-10,active
+235,Ortiz Ltd,SMB,3,2026-07-07,active
+236,"Harrison, Johnson and Roberts",SMB,5,2026-05-30,churned
+237,Warner-Gibson,SMB,4,2025-12-02,active
+238,"Hall, Baker and Moody",SMB,3,2025-04-02,active
+239,"Guerrero, Peck and Coleman",SMB,2,2025-02-02,active
+240,"Walker, Hernandez and Baker",SMB,4,2025-06-04,churned
+241,Jones and Sons,Mid-Market,1,2025-10-20,active
+242,Larson-Holloway,Mid-Market,4,2026-04-27,active
+243,Gonzales-Harrison,Mid-Market,1,2025-11-04,active
+244,Lyons-Bender,SMB,4,2025-02-15,active
+245,"Fernandez, Kim and George",Mid-Market,4,2025-06-08,active
+246,Navarro-Munoz,SMB,1,2026-09-17,churned
+247,Davis Ltd,SMB,5,2026-09-22,active
+248,"Matthews, Smith and Hubbard",Mid-Market,3,2025-09-17,active
+249,Johnston-Hines,SMB,5,2026-06-03,active
+250,Ruiz Ltd,SMB,1,2026-04-12,active
+251,Moon-White,Mid-Market,2,2026-08-19,active
+252,"Graham, Olsen and Costa",Mid-Market,3,2026-07-23,active
+253,Bailey-Cook,Enterprise,2,2026-02-17,active
+254,"Garcia, Martin and Jenkins",SMB,2,2025-09-28,active
+255,Roberts-Landry,SMB,4,2026-02-15,active
+256,"Johnson, Miller and King",Mid-Market,1,2025-08-13,active
+257,Cordova Group,SMB,5,2025-08-30,churned
+258,"Bryan, Smith and Booth",Mid-Market,1,2026-02-04,active
+259,Gutierrez-Lopez,SMB,2,2026-01-13,active
+260,Dean-Jimenez,SMB,4,2026-01-19,churned
+261,Wolf-Harris,SMB,5,2025-09-22,active
+262,"Anderson, Roberts and Gilmore",Mid-Market,2,2025-10-06,churned
+263,Martinez-Dudley,SMB,2,2025-02-07,active
+264,"Lloyd, Mckinney and Collins",SMB,6,2026-01-31,active
+265,Tran Inc,SMB,6,2026-01-15,active
+266,Gay Inc,SMB,4,2026-08-21,active
+267,Valentine-Holland,SMB,3,2025-12-03,active
+268,Jimenez Ltd,Mid-Market,3,2025-11-11,active
+269,Hicks-Hill,SMB,4,2025-03-14,active
+270,Baird-Sanchez,Mid-Market,4,2025-05-31,churned
+271,"Thomas, Lee and Greene",Mid-Market,2,2025-08-24,active
+272,"Suarez, Shields and Hill",SMB,1,2025-09-17,active
+273,Morgan-French,SMB,1,2025-09-08,active
+274,Hoover-Campbell,Mid-Market,6,2025-09-27,active
+275,Monroe-Carpenter,SMB,3,2026-05-12,active
+276,"Burns, Hernandez and Ryan",SMB,3,2025-04-21,active
+277,Cook-Hines,Enterprise,3,2025-08-21,active
+278,Gibson-Morris,Enterprise,5,2025-05-10,active
+279,Pollard and Sons,Mid-Market,1,2025-08-06,active
+280,"Reyes, Chase and Jenkins",SMB,1,2026-03-22,active
+281,Garner-Thornton,Mid-Market,2,2025-03-01,churned
+282,Hughes-Alvarado,Mid-Market,3,2025-08-25,active
+283,"Pollard, Simpson and Johnson",SMB,5,2025-02-15,active
+284,"Sanford, Rivera and Garcia",Mid-Market,3,2026-09-02,churned
+285,Garcia-Lozano,SMB,3,2026-04-17,active
+286,Bowen Group,SMB,6,2025-06-28,churned
+287,"Booker, Jones and Harrington",SMB,1,2025-06-01,churned
+288,Morgan-Schwartz,SMB,4,2025-04-01,churned
+289,"Miller, Murphy and Craig",SMB,4,2025-11-14,churned
+290,"James, Stewart and Higgins",Mid-Market,3,2026-05-03,active
+291,Brennan-Johnson,Enterprise,5,2026-01-21,active
+292,Young Ltd,SMB,2,2026-07-19,active
+293,Bright-Francis,Mid-Market,6,2025-08-28,active
+294,Good-Hodges,Enterprise,2,2025-07-19,active
+295,"Brennan, Wallace and Benson",SMB,4,2025-11-17,active
+296,Williams Inc,SMB,4,2025-06-03,churned
+297,Howard-Jordan,SMB,6,2026-09-15,active
+298,Schmidt PLC,SMB,3,2025-05-24,active
+299,"Sparks, Jackson and Miller",Mid-Market,2,2025-11-18,active
+300,Harvey-Allen,SMB,1,2025-12-14,churned
+301,"Thomas, Murray and King",SMB,3,2025-03-07,active
+302,Estrada-Nolan,SMB,5,2025-11-11,active
+303,Santana-Byrd,SMB,1,2025-11-03,active
+304,Jones LLC,Enterprise,6,2025-07-08,churned
+305,"Evans, Hayden and Vaughn",SMB,4,2025-04-19,churned
+306,Bruce-Gonzalez,SMB,1,2025-02-28,active
+307,Castaneda-Rodriguez,SMB,2,2025-02-06,active
+308,Armstrong-Andrews,SMB,4,2025-11-19,active
+309,"Phillips, Spence and Barrett",SMB,2,2025-03-27,active
+310,Smith-Grimes,SMB,1,2026-09-05,active
+311,"Beltran, Lozano and Mcgee",SMB,4,2025-06-29,active
+312,Parsons-Hall,SMB,5,2026-03-03,active
+313,Robinson-Lee,Mid-Market,1,2026-03-16,active
+314,Byrd-Le,Mid-Market,2,2025-11-28,active
+315,"Becker, Taylor and Davis",Mid-Market,2,2026-07-21,active
+316,"Lucas, Parker and Alexander",Mid-Market,4,2025-04-09,active
+317,"Diaz, Anderson and Browning",Mid-Market,5,2025-06-22,active
+318,Burgess-Thompson,SMB,5,2025-07-03,active
+319,Buchanan LLC,SMB,6,2025-04-24,churned
+320,"Shaw, Nelson and Martin",SMB,5,2025-07-29,churned
+321,Coffey-Phillips,SMB,2,2025-08-09,active
+322,Brock-Mcdonald,Mid-Market,1,2026-05-10,active
+323,Taylor and Sons,SMB,4,2025-08-02,active
+324,"Ramsey, Whitney and Coffey",Mid-Market,6,2026-07-17,active
+325,"Diaz, Gibbs and Smith",Mid-Market,6,2026-05-15,active
+326,"Martinez, Richardson and Curry",SMB,2,2026-08-01,churned
+327,Richards-Carson,Enterprise,2,2025-04-05,active
+328,Rodriguez-Hall,SMB,1,2026-09-20,active
+329,Harvey PLC,Mid-Market,1,2026-02-08,active
+330,Herman-Walker,SMB,4,2026-09-19,active
+331,Reid Group,SMB,4,2025-09-04,active
+332,"Turner, Ortiz and Taylor",SMB,3,2026-09-01,churned
+333,Torres Group,SMB,2,2026-01-23,active
+334,Davis PLC,SMB,5,2025-03-16,churned
+335,Price LLC,Enterprise,3,2025-10-07,active
+336,"Avery, Horton and Fernandez",Mid-Market,5,2025-04-25,active
+337,"Newton, Moore and Perry",SMB,6,2026-08-25,active
+338,Bass PLC,SMB,2,2025-08-04,churned
+339,Crosby-Ramirez,SMB,2,2025-06-15,active
+340,"Wood, Ramos and Sampson",SMB,6,2026-01-02,active
+341,Garcia-Jennings,Enterprise,4,2025-10-16,active
+342,"Winters, Newman and Brown",SMB,2,2025-03-31,active
+343,Lopez-Martinez,SMB,4,2026-06-10,active
+344,Davis-Lewis,SMB,4,2026-06-28,active
+345,"Harper, Smith and Buchanan",SMB,6,2026-04-27,active
+346,Zhang PLC,SMB,2,2026-02-09,active
+347,Jones PLC,Mid-Market,6,2025-10-02,active
+348,Willis and Sons,Mid-Market,6,2025-12-26,churned
+349,Schroeder-Kramer,Enterprise,2,2025-12-13,active
+350,"Smith, Garrison and Thomas",Mid-Market,1,2025-05-12,active
+351,Fernandez and Sons,SMB,4,2025-03-22,active
+352,Guerrero Inc,Mid-Market,1,2025-07-04,churned
+353,Smith and Sons,Enterprise,2,2025-11-03,active
+354,"Morris, Thompson and Williams",Mid-Market,3,2025-05-09,active
+355,"Fisher, Wilson and Brown",Enterprise,6,2025-04-06,active
+356,Strickland-Palmer,Mid-Market,6,2026-07-02,active
+357,Hayes and Sons,Mid-Market,1,2025-09-16,active
+358,"Williams, Logan and Camacho",SMB,6,2026-01-21,active
+359,"Turner, Schneider and Johnson",Mid-Market,1,2025-12-15,active
+360,Boone-Simmons,SMB,5,2026-04-22,active
+361,Henry Group,SMB,6,2026-04-25,active
+362,Lam LLC,Mid-Market,6,2025-07-30,churned
+363,"Hernandez, Martinez and Weber",Enterprise,2,2026-06-29,churned
+364,"Kelley, Nguyen and Vang",Enterprise,6,2025-09-13,active
+365,"Phillips, Wagner and Jordan",SMB,1,2026-06-22,churned
+366,"Wilson, Pena and Rich",Mid-Market,4,2025-10-04,active
+367,"Le, Lewis and Hayes",Mid-Market,3,2025-04-09,active
+368,Gutierrez Group,SMB,2,2026-05-07,active
+369,Perry-Davis,SMB,1,2025-02-19,active
+370,Edwards-Scott,SMB,5,2026-05-15,active
+371,Mcdaniel Group,Mid-Market,3,2025-02-27,active
+372,Davis Inc,SMB,4,2025-06-06,churned
+373,Reynolds Ltd,Enterprise,3,2026-02-01,active
+374,"Watson, Anderson and Brown",SMB,3,2026-08-25,active
+375,"Hoffman, Santiago and Jenkins",Enterprise,6,2025-10-06,active
+376,"Pugh, Henderson and Moon",SMB,1,2025-04-15,churned
+377,Schmitt PLC,Mid-Market,5,2025-06-22,churned
+378,Bell-Lane,SMB,5,2026-07-29,active
+379,Moore Group,SMB,3,2026-04-17,churned
+380,Boone LLC,Mid-Market,2,2025-04-02,active
+381,"Richardson, Farmer and Andrews",Enterprise,1,2025-09-22,active
+382,Bruce-Villegas,Mid-Market,6,2025-07-11,active
+383,"Austin, Day and Johnson",SMB,6,2025-05-19,churned
+384,"Gallegos, Adams and White",SMB,2,2026-06-28,active
+385,"Farmer, Dorsey and Bell",SMB,1,2026-02-10,active
+386,Kane PLC,SMB,1,2025-05-20,churned
+387,"Morales, Thomas and Schultz",Mid-Market,1,2026-03-02,churned
+388,Davis PLC,Mid-Market,5,2025-10-09,churned
+389,Bennett Group,Mid-Market,6,2025-03-10,churned
+390,Moore-Collins,Mid-Market,1,2025-10-31,churned
+391,Frank-Bradley,Mid-Market,5,2025-05-24,active
+392,Ware and Sons,Mid-Market,2,2025-06-29,active
+393,Webster Inc,SMB,3,2026-07-18,active
+394,"Miller, Ramos and Coleman",SMB,4,2026-04-07,active
+395,"Ramos, Nelson and Fischer",Mid-Market,5,2025-04-23,active
+396,Reed Inc,Mid-Market,6,2026-07-01,active
+397,Gregory-Watkins,SMB,1,2026-01-15,churned
+398,"Estrada, Williams and Foster",SMB,2,2026-07-15,active
+399,"Brown, Harris and Dougherty",Mid-Market,2,2026-04-29,active
+400,Duran LLC,SMB,2,2025-08-25,active
+401,Wilson-Jimenez,SMB,6,2025-12-22,active
+402,Thompson-James,Mid-Market,5,2025-12-19,active
+403,"Hall, Hansen and Barnett",Mid-Market,2,2026-04-13,active
+404,Jones-Hensley,SMB,6,2025-07-01,active
+405,Graham Group,Mid-Market,3,2025-08-21,active
+406,Atkins PLC,SMB,4,2025-06-29,churned
+407,Berry-Mckinney,Mid-Market,3,2025-07-30,active
+408,Roberts-Sullivan,SMB,1,2025-05-09,active
+409,Jackson-Meza,SMB,6,2025-02-23,active
+410,Collier-Gillespie,SMB,1,2026-08-24,active
+411,Kim Inc,SMB,2,2025-03-18,active
+412,Graham Group,Mid-Market,2,2026-07-24,active
+413,"Miller, Harrell and Reese",SMB,2,2025-02-02,churned
+414,Cook and Sons,SMB,1,2026-05-18,active
+415,Dixon Inc,SMB,1,2025-08-19,active
+416,"Hicks, Bullock and Bailey",Mid-Market,5,2025-12-11,active
+417,"Mullen, Brewer and Hernandez",Mid-Market,6,2025-07-22,active
+418,Thomas and Sons,Enterprise,1,2025-11-25,active
+419,Morrison Ltd,SMB,2,2025-11-01,active
+420,Thompson Ltd,SMB,4,2025-12-19,active
+421,Marshall-Elliott,SMB,6,2025-09-27,active
+422,"Cole, Glass and Cunningham",SMB,5,2025-12-23,churned
+423,"Downs, Morris and Maddox",Enterprise,5,2026-06-16,active
+424,Hernandez-Jones,Mid-Market,4,2025-10-22,churned
+425,Welch-Hogan,SMB,3,2025-09-07,active
+426,"Brown, Romero and Collins",SMB,2,2025-04-21,active
+427,Johnson-Wood,Enterprise,6,2025-09-06,active
+428,Jones-Lin,SMB,5,2025-04-18,active
+429,Gilbert PLC,SMB,1,2025-05-22,churned
+430,Ford-Spencer,SMB,5,2026-09-01,active
+431,"Huang, Cole and Pacheco",SMB,1,2025-03-27,active
+432,"Lopez, Jacobs and Mason",SMB,5,2025-11-20,active
+433,Hayes LLC,SMB,5,2026-06-21,active
+434,"Miller, Lucas and Williams",SMB,1,2026-09-01,active
+435,"Kim, Gonzales and Mills",Mid-Market,3,2025-04-30,active
+436,Cox LLC,SMB,1,2025-05-11,active
+437,Ortiz-Morgan,SMB,4,2025-09-14,active
+438,"Williams, Mccoy and Cook",Enterprise,6,2026-01-02,active
+439,Davis-Gregory,Mid-Market,1,2026-09-05,churned
+440,King-York,SMB,3,2025-06-06,active
+441,"Marks, Cook and Aguilar",SMB,6,2025-05-11,active
+442,Rangel LLC,Mid-Market,2,2025-07-04,active
+443,"Hale, Myers and Larson",SMB,1,2026-07-15,active
+444,Collins Group,SMB,3,2025-02-19,active
+445,"Conner, Li and Santiago",Enterprise,4,2025-09-19,active
+446,"Osborn, Gaines and Davis",SMB,4,2025-04-14,churned
+447,"Henderson, Cox and Cox",Mid-Market,2,2025-05-07,churned
+448,Bean LLC,SMB,6,2026-08-10,active
+449,Lee-Cooke,Mid-Market,4,2025-02-02,churned
+450,Jones Inc,SMB,2,2025-08-14,active
+451,"Wise, Conley and Stephenson",SMB,6,2026-08-09,churned
+452,Stanley PLC,SMB,6,2026-02-04,churned
+453,Harper and Sons,SMB,3,2025-03-16,active
+454,White Ltd,Mid-Market,1,2025-11-09,active
+455,"Lamb, Martin and Kim",SMB,4,2026-09-12,churned
+456,Diaz-Ball,SMB,4,2025-10-01,active
+457,Bishop-Goodwin,Mid-Market,1,2025-12-18,churned
+458,Young-Allen,Mid-Market,4,2025-12-20,churned
+459,Mckee-Lee,SMB,6,2026-03-08,active
+460,"Valentine, Joyce and Murray",SMB,1,2025-05-25,active
+461,Strickland-Shaw,Enterprise,5,2026-06-24,active
+462,Burch-Montoya,Mid-Market,1,2026-09-23,active
+463,"Taylor, Wright and Davidson",Mid-Market,5,2025-04-28,active
+464,Spencer-Garcia,Enterprise,3,2026-06-11,active
+465,"Rosales, Mitchell and Hines",Mid-Market,1,2026-06-11,active
+466,Cole-Palmer,SMB,6,2026-04-26,active
+467,Davis-Lozano,SMB,1,2025-09-13,active
+468,Wilkerson-Arias,SMB,4,2025-11-12,active
+469,Brown-Shaw,Mid-Market,2,2026-06-24,active
+470,Hughes Inc,Enterprise,6,2025-05-04,active
+471,Walker-Flores,SMB,5,2026-06-18,churned
+472,Combs Ltd,SMB,5,2026-08-12,active
+473,Moody-Taylor,SMB,3,2026-03-21,active
+474,Lowery-Kennedy,Enterprise,3,2025-08-26,active
+475,Blake Group,SMB,4,2026-01-05,active
+476,Gilbert-Bullock,SMB,5,2025-03-03,active
+477,Scott and Sons,SMB,6,2026-08-19,active
+478,"Bentley, Lynch and Henderson",SMB,1,2025-08-27,active
+479,Young-Martinez,SMB,4,2025-03-07,active
+480,Barnes PLC,SMB,1,2026-05-28,active
+481,Brown-Copeland,SMB,2,2026-03-06,active
+482,Carlson-Smith,SMB,5,2026-02-13,churned
+483,"Andrews, Higgins and Carter",SMB,2,2025-03-05,active
+484,Mendez and Sons,SMB,5,2026-05-02,active
+485,"Butler, Beck and Miller",SMB,3,2026-02-22,active
+486,Jones-Fox,Mid-Market,2,2026-05-27,active
+487,"Hartman, Romero and Smith",SMB,3,2026-06-17,active
+488,Williams-Hughes,SMB,4,2025-06-09,active
+489,King-Smith,SMB,5,2025-06-08,active
+490,Cooper Ltd,SMB,4,2026-08-14,active
+491,"Fuller, Ingram and Moss",SMB,6,2025-12-19,active
+492,Anderson-Bell,SMB,6,2025-10-24,active
+493,Li-Thompson,Mid-Market,5,2025-07-25,churned
+494,"Marshall, Dominguez and Welch",SMB,4,2026-02-23,active
+495,Brown Group,SMB,2,2026-05-03,active
+496,Carter Inc,SMB,3,2025-02-02,active
+497,Blackwell LLC,SMB,1,2026-01-01,churned
+498,Robertson-Hays,SMB,3,2026-09-25,churned
+499,"Kennedy, Johnson and Lucas",Mid-Market,6,2025-07-21,active
+500,Kelly-Norman,Mid-Market,3,2025-07-21,churned
