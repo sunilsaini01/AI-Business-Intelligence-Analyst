@@ -1,0 +1,14 @@
+# Phase 13, Objective B — temporary override for running the browser E2E
+# test deterministically (LLM_PROVIDER=fake, app/core/fake_llm.py) without
+# touching .env or changing the production default. Use explicitly:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.e2e.yml up -d api
+#
+# Never auto-loaded (only docker-compose.override.yml is), and not meant to
+# be kept as a permanent fixture — delete it once E2E verification is done,
+# or keep it checked in as documented E2E tooling; either way it never
+# affects a normal `docker compose up`.
+services:
+  api:
+    environment:
+      LLM_PROVIDER: fake

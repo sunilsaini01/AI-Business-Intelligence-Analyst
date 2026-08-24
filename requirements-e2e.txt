@@ -1,0 +1,12 @@
+# Phase 13, Objective B — browser E2E testing only. Deliberately kept out
+# of the main requirements.txt / Docker images: these pull in real browser
+# binaries (~300MB+), which nothing else in this project needs. Install
+# with:
+#
+#   pip install -r requirements-e2e.txt
+#   playwright install --with-deps chromium
+#
+# then run tests/e2e/ against an already-running stack
+# (docker compose up -d) with API_BASE_URL/FRONTEND_BASE_URL pointed at it.
+playwright==1.49.0
+pytest-playwright==0.6.2
