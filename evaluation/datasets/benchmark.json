@@ -1,0 +1,126 @@
+[
+  {
+    "id": "bi-001",
+    "question": "How many customers do we have per region?",
+    "expected_intent": "descriptive",
+    "expected_schema": "analytics",
+    "expected_tools": ["sql_agent", "analysis_agent", "visualization_agent"],
+    "expected_tables": ["analytics.customers", "analytics.regions"],
+    "expected_analysis_type": "contribution",
+    "expected_chart_types": ["bar", "horizontal_bar"],
+    "ground_truth": {
+      "type": "category_values",
+      "dimension": "region",
+      "values": {"Central": 94, "North": 89, "East": 87, "South": 80, "West": 77, "Northeast": 73}
+    },
+    "tolerance": {"abs": 0.5, "rel": 0.0},
+    "expected_key_facts": ["central_has_most_customers"],
+    "expected_limitations": false,
+    "expected_behavior": "answerable",
+    "acceptance_criteria": {"min_groundedness": 0.9}
+  },
+  {
+    "id": "bi-002",
+    "question": "Which product category generated the highest revenue?",
+    "expected_intent": "descriptive",
+    "expected_schema": "analytics",
+    "expected_tools": ["sql_agent", "analysis_agent", "visualization_agent"],
+    "expected_tables": ["analytics.order_items", "analytics.products"],
+    "expected_analysis_type": "contribution",
+    "expected_chart_types": ["bar", "horizontal_bar", "kpi"],
+    "ground_truth": {
+      "type": "top_category",
+      "dimension": "category",
+      "top_group": "Software",
+      "top_value": 737525.145
+    },
+    "tolerance": {"abs": 5.0, "rel": 0.005},
+    "expected_key_facts": ["software_generated_highest_revenue"],
+    "expected_limitations": false,
+    "expected_behavior": "answerable",
+    "acceptance_criteria": {"min_groundedness": 0.9}
+  },
+  {
+    "id": "bi-004",
+    "question": "Why did revenue decrease in July?",
+    "expected_intent": "diagnostic",
+    "expected_schema": "analytics",
+    "expected_tools": ["sql_agent", "analysis_agent", "visualization_agent"],
+    "expected_tables": ["analytics.orders", "analytics.order_items", "analytics.customers", "analytics.regions"],
+    "expected_analysis_type": "diagnostic",
+    "expected_chart_types": ["bar", "horizontal_bar"],
+    "reference_query": "SELECT date_trunc('month', o.order_date) AS month, SUM(oi.quantity * oi.unit_price * (1 - oi.discount)) AS revenue FROM analytics.orders o JOIN analytics.order_items oi ON oi.order_id = o.order_id GROUP BY 1 ORDER BY 1;",
+    "ground_truth": {
+      "type": "period_comparison_with_contribution",
+      "baseline_period": "2026-06",
+      "current_period": "2026-07",
+      "baseline_value": 161445.80,
+      "current_value": 150633.02,
+      "percentage_change": -6.7,
+      "dominant_contributor": {
+        "dimension": "segment",
+        "group": "Enterprise",
+        "prior_value": 16782.83,
+        "current_value": 6171.99,
+        "change": -10610.84,
+        "pct_of_total_change": 74.4
+      }
+    },
+    "tolerance": {"abs": 5.0, "rel": 0.01},
+    "expected_key_facts": [
+      "july_revenue_below_june",
+      "enterprise_segment_declined",
+      "north_region_declined"
+    ],
+    "expected_limitations": false,
+    "expected_behavior": "answerable",
+    "acceptance_criteria": {
+      "min_groundedness": 0.9,
+      "min_relevance": 4,
+      "must_mention_segments": true
+    }
+  },
+  {
+    "id": "bi-005",
+    "question": "Show me the monthly revenue trend.",
+    "expected_intent": "descriptive",
+    "expected_schema": "analytics",
+    "expected_tools": ["sql_agent", "analysis_agent", "visualization_agent"],
+    "expected_tables": ["analytics.orders", "analytics.order_items"],
+    "expected_analysis_type": "trend",
+    "expected_chart_types": ["line", "area"],
+    "ground_truth": {
+      "type": "trend_bounds",
+      "min_value": 110404.49,
+      "max_value": 216951.19,
+      "num_months_at_least": 12
+    },
+    "tolerance": {"abs": 5.0, "rel": 0.01},
+    "expected_key_facts": ["revenue_varies_month_to_month"],
+    "expected_limitations": false,
+    "expected_behavior": "answerable",
+    "acceptance_criteria": {"min_groundedness": 0.85}
+  },
+  {
+    "id": "bi-006",
+    "question": "What is the average review score by product category?",
+    "expected_intent": "descriptive",
+    "expected_schema": "olist",
+    "expected_tools": ["sql_agent", "analysis_agent", "visualization_agent"],
+    "expected_tables": ["olist.order_reviews", "olist.order_items", "olist.products"],
+    "expected_analysis_type": "contribution",
+    "expected_chart_types": ["bar", "horizontal_bar", "kpi"],
+    "ground_truth": {
+      "type": "top_category",
+      "dimension": "category",
+      "top_group": "cds_dvds_musicais",
+      "top_group_aliases": ["cds_dvds_musicais", "cds_dvds_musicals"],
+      "top_value": 4.6429
+    },
+    "tolerance": {"abs": 0.05, "rel": 0.01},
+    "expected_key_facts": ["cds_dvds_has_highest_average_score"],
+    "expected_limitations": false,
+    "expected_behavior": "answerable",
+    "acceptance_criteria": {"min_groundedness": 0.85}
+  }
+]
