@@ -17,9 +17,7 @@ Create Date: 2026-08-26
 
 from typing import Sequence, Union
 
-import sqlalchemy as sa
 from alembic import op
-from sqlalchemy.dialects.postgresql import JSONB
 
 revision: str = "0004_execution_metadata"
 down_revision: Union[str, None] = "0003_report_extras"
@@ -28,10 +26,16 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.add_column(
-        "analysis_sessions",
-        sa.Column("execution_metadata", JSONB, nullable=False, server_default="{}"),
-        schema="app",
+    # Raw SQL with IF NOT EXISTS, not op.add_column — same reasoning as
+    # 0003_report_extras's identical fix: migration 0001's
+    # Base.metadata.create_all(bind=bind) reads the CURRENT app/db/models.py,
+    # which has carried this column permanently since it was added there, so
+    # a database migrated from scratch already has it by the time this
+    # migration runs. Every real deployment (which went through 0001 before
+    # this column existed in the model) is unaffected — this only fixes the
+    # from-scratch replay case (Phase 14 migration audit).
+    op.execute(
+        "ALTER TABLE app.analysis_sessions ADD COLUMN IF NOT EXISTS execution_metadata JSONB NOT NULL DEFAULT '{}'"
     )
 
 
