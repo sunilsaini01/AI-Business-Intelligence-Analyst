@@ -4,6 +4,34 @@ Full design rationale lives in `BI_AGENT_BLUEPRINT_1.md` at the repo root —
 this file tracks how the *implementation* maps onto it and records decisions
 that need to survive independent of that document.
 
+## Render deployment (final deployment phase)
+
+No new agents, models, or infrastructure — this phase only made the
+existing system deployable to Render. Full deploy procedure:
+docs/deployment.md; `render.yaml` at the repo root is the Blueprint. Three
+small, additive changes to production-path code, none of them touching
+agent/graph/analysis logic:
+
+- **CORS** (`app/main.py`, new `Settings.frontend_origin`) — previously
+  no CORS middleware existed at all; now scoped to the real frontend
+  origin, never `"*"`. Not load-bearing for the primary flow (the
+  Streamlit frontend talks to this API server-to-server), added as
+  defense-in-depth for any direct browser-based API access.
+- **`/health/ready` now returns HTTP 503 when not ready** (previously
+  always `200` regardless of the `ready` field) — a real gap found this
+  phase: Render, Docker, and Kubernetes health checks all gate
+  traffic/restarts on the HTTP status code, never the response body, so
+  the previous behavior made this endpoint unusable as an actual infra
+  health check even though its underlying DB check was already correct.
+  See `app/api/routes/health.py` and its new regression test.
+- **Both Dockerfiles' `CMD`** now read `${PORT:-<default>}` via `exec`
+  (shell form with an explicit `exec`, not the previous JSON exec-form
+  array) — Render's Docker runtime injects `PORT` and requires the
+  container to bind to it; `exec` ensures `SIGTERM` reaches uvicorn/
+  Streamlit directly for a clean shutdown during a Render deploy. Local
+  `docker-compose.yml` is unaffected (it supplies its own `command:` per
+  service, which overrides `CMD` entirely and never sets `PORT`).
+
 ## Production hardening (Phase 13)
 
 Four additive objectives — no rewrite of any existing agent, no change to
@@ -93,6 +121,152 @@ token-tracking fix), `narrative_enabled`, `report_generated`. Exposed via
 `GET /analysis/{id}` (not `/status`, which stays lean for polling). Never
 contains secrets — node names, counts, timestamps, booleans, token counts
 only.
+
+## Production hardening (Phase 14)
+
+Authorization boundary added on top of the auth-ready-but-unwired `User`
+model from Phase 3 (`app/db/models.py` — "Auth-ready, not wired to a login
+flow yet"): `app/core/auth.py` (bcrypt password hashing, a signed
+stateless JWT via `pyjwt`, `get_current_user` dependency),
+`app/services/auth_service.py`, `app/api/routes/auth.py`
+(`/auth/register`, `/auth/login`, JSON bodies — not an OAuth2 form, so no
+`python-multipart` dependency for no real benefit here). Every
+`/analysis/*` route and `GET /reports` now requires a bearer token and
+enforces per-user ownership — see docs/api.md's "Auth & ownership" table
+for the exact 401/403/404 rules, and docs/security.md for the threat-model
+framing. `frontend/app.py` gained a minimal login/register gate
+(email+password, no reset/verification flows) and persists `analysis_id`
+to `st.query_params` so a browser refresh mid-analysis resumes polling
+instead of losing progress.
+
+Doing the mandated migration-chain audit for real (upgrade -> downgrade ->
+upgrade against a disposable, throwaway Postgres container — never the dev
+DB) surfaced two genuine, previously-invisible bugs, both fixed:
+1. `0001_initial`'s `Base.metadata.create_all(bind=bind)` was unscoped —
+   it also picked up `olist.*` tables (registered on the shared
+   `Base.metadata` by `env.py`'s unconditional `import
+   app.db.models_olist`), and tried to create them before migration
+   `0002_olist_schema` had created the `olist` schema at all. Fixed by
+   scoping 0001's `create_all` to exactly its own `app.*`/`analytics.*`
+   tables, the same way 0002 already scopes its own.
+2. `0003_report_extras` and `0004_execution_metadata`'s `op.add_column`
+   calls duplicate-column-errored on a from-scratch replay, because
+   `app/db/models.py` carries those two columns permanently (they were
+   added directly to the ORM classes when each Phase shipped), so 0001's
+   `create_all()` already creates them using today's model file. Fixed by
+   switching both to raw `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` —
+   behaviorally identical for every real deployment (which went through
+   0001 before these columns existed in the model), and now safely
+   idempotent for a from-scratch chain replay too.
+
+Neither bug was reachable by any existing test (nothing exercised the full
+chain against a genuinely empty database before) and neither affected the
+already-migrated dev database — `alembic upgrade head` against it after
+the fix is a clean no-op, confirmed directly.
+
+A third bug, unrelated to migrations, surfaced while building the
+Streamlit `AppTest`-based polling integration tests (Issue 4): an
+`elif` directly following an `except` block (invalid Python — `elif` only
+attaches to `if`) had left `frontend/app.py` with a genuine `SyntaxError`
+that a plain `python -m pytest` run never caught, because nothing had
+previously driven the real script through Python's own compiler outside
+`streamlit run` itself. Fixed by extracting the status-handling logic into
+`_handle_status_response()`, which also cleanly separates the "malformed/
+missing status" guard from the try/except's own error handling.
+
+## Security hardening + ML Agent (Phase 15)
+
+Four objectives, strictly scoped — no rewrite of any existing agent, no
+architecture replacement, no new infrastructure (no Redis/MCP/Kafka/
+Grafana):
+
+1. **API key / secret exposure** — `Settings`' secret fields are now
+   `Field(repr=False)` (`app/core/config.py`), closing a real accidental-
+   exposure path (a plain object repr reaching a log/exception/test-
+   failure trace). See docs/security.md's "Secrets" section for the
+   rotation procedure and `tests/security/test_secret_exposure.py` for
+   the regression proof — including checks against this environment's
+   OWN real configured secret values, not just a fake stand-in.
+2. **Login rate limiting** — `app/core/security.py::LoginRateLimiter`, a
+   token bucket keyed by `(client IP, email)`, wired only into
+   `POST /auth/login`, deliberately separate from the general
+   `RateLimitMiddleware` (which stays off by default and IP-only). See
+   docs/security.md's "Login rate limiting" section.
+3. **SECRET_KEY rotation** — `kid`-header dual-key JWT verification
+   (`app/core/auth.py`): new tokens always sign with the current key;
+   the previous key (if configured) verifies but never signs, for an
+   operator-controlled grace window. A pre-rotation, `kid`-less token
+   still validates against the current key — rotating never mass-
+   invalidates existing sessions. See docs/security.md's "SECRET_KEY
+   rotation" section for the full procedure and the tradeoff it makes
+   explicit (an operator-controlled grace period, not a self-expiring
+   timer — the simplest mechanism that fits a stateless-JWT design
+   without a token-revocation database table).
+4. **ML Agent** — the final piece of scaffolding from Phase 8
+   (`app/agents/ml_agent.py`, `app/tools/ml_tools.py`) implemented for
+   real: linear-trend revenue forecasting and logistic-regression churn
+   risk, both deterministic (zero LLM calls, Sec 5 rule), both reached
+   only through `run_query`'s existing safety pipeline (fixed/reviewed
+   SQL, not LLM-generated, but validated identically). Wired into the
+   graph as a fifth linear-chain node (`analysis_agent -> ml_agent ->
+   visualization_agent`) that no-ops when the question isn't predictive,
+   rather than a new conditional edge — every other routing path (retry
+   loop, out_of_scope short-circuit, Critic authority, Report Agent
+   ownership) is untouched. The Critic's numerical-grounding check now
+   also accepts genuine ML metrics as evidence (`app/tools/
+   critic_checks.py::_collect_known_values`), so the Supervisor can cite
+   a real forecast/churn number without it being flagged as fabricated —
+   while a number that ISN'T actually in the ML result still is. See
+   docs/api.md's "ML Agent" section for the full output shape and
+   limitations.
+
+## ML evaluation & regression hardening (Phase 16)
+
+The ML Agent's quality (Phase 15) was validated manually; Phase 16 makes
+it a measurable, reproducible regression contract inside the EXISTING
+evaluation framework (`app/evaluation/`) — no second evaluation system,
+no new endpoint. Purely additive to `app/evaluation/{models,metrics,
+evaluator}.py`: a new `LevelResult(level="ml", ...)`, a new
+`CaseEvaluation.ml_correct` field, and `evaluate_forecast_quality`/
+`evaluate_churn_quality`/`evaluate_ml_quality` in metrics.py, gated by
+fixed thresholds (MAPE/MAE for forecasting, ROC-AUC/accuracy/precision/
+recall for churn — see docs/evaluation.md for the exact numbers and the
+reasoning behind each). Two new benchmark cases (`ml-001`/`ml-002`,
+`evaluation/datasets/benchmark.json`) exercise this against the real
+seeded database, fully deterministically (`tests/evaluation/
+test_ml_evaluation.py` drives them via `ScriptedLLMClient`, zero Groq/
+Anthropic quota — `ml_agent.py` itself never calls an LLM regardless).
+
+A graceful degradation (`ml_results["ok"] is False`) is never scored as a
+quality failure (`correct: None`, same "not applicable" convention every
+other level already uses) — only a genuinely bad or malformed/fabricated-
+looking result fails the gate. This is what "bad ML output cannot silently
+appear as a successful analysis" means concretely: an insufficient-data
+case degrading safely still passes overall (the OTHER levels decide it);
+a real quality regression on a predictive question now fails the case.
+
+**One real bug found and fixed** during the leakage/failure-handling
+audit: `app/agents/ml_agent.py::_run_forecast`/`_run_churn` called
+straight into `evaluate_and_forecast`/`build_churn_feature_table`/
+`fit_churn_classifier` with no try/except — a genuinely unexpected
+computation error (as opposed to a query-layer rejection, which was
+already handled) would have propagated up and failed the ENTIRE analysis,
+not just gracefully degraded the predictive portion of it, breaking this
+project's established graceful-degradation convention (Sec 9). Fixed by
+wrapping those calls and returning the same `ok=False` shape with a new
+`status="error"` (never the raw exception message — only its type name,
+matching `app/core/errors.py`/`database_tools.py::run_query`'s existing
+non-leaking convention). See `app/agents/ml_agent.py::_ml_error` and
+`tests/agents/test_ml_agent.py`'s "unexpected computation error" tests.
+
+**Data leakage audit**: no leakage found in the existing implementation —
+forecasting's time-aware split and churn's feature/label column
+separation were both already correct (verified, not rewritten). New
+regression tests lock this in for the future: a deliberately-planted
+spike in the forecast's held-out point can't influence the model that's
+scored against it, and the churn label's own source columns
+(`days_since_last_order`, `last_order_date`, `signup_date`, `churned`)
+are asserted to never appear among the columns actually fit.
 
 ## Critic Agent (Phase 9)
 
