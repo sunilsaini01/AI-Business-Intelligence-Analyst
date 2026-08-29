@@ -31,9 +31,8 @@ Render
    not a bug).
 2. **Set the two database URLs** (see "Database URLs" below).
 3. **Set `GROQ_API_KEY`** (or `ANTHROPIC_API_KEY` + `LLM_PROVIDER=anthropic`).
-4. **Run migrations** — either automatically via `preDeployCommand`
-   (paid instance types only) or manually (free tier) — see "Migrations"
-   below. The database has zero tables until this runs.
+4. **Run migrations manually** — see "Migrations" below. The database
+   has zero tables until this runs.
 5. **Confirm the two placeholder URLs** in `render.yaml`
    (`FRONTEND_ORIGIN` on the backend, `API_BASE_URL` on the frontend)
    match the actual `*.onrender.com` hostnames Render assigned — they're
@@ -63,11 +62,11 @@ deployment bug.
 
 ## Migrations
 
-`preDeployCommand: python -m alembic upgrade head` in `render.yaml` runs
-this automatically before each new deploy starts serving traffic — **but
-Render's free instance types don't support `preDeployCommand`.** On the
-free tier, run it manually once per deploy via the Render Shell tab on the
-`aibia-api` service:
+`render.yaml` deliberately does **not** set `preDeployCommand` — Render's
+Blueprint validator rejects it outright (a hard error at Blueprint-creation
+time, not just a no-op) for any service on the free plan, which is what
+`aibia-api` uses here. Run migrations manually once per deploy via the
+Render Shell tab on the `aibia-api` service instead:
 
 ```
 python -m alembic upgrade head
@@ -87,11 +86,11 @@ it's already at (`alembic current`).
 `analytics`/`olist` schemas the evaluation benchmark and demo questions
 rely on. Run these manually via the Render Shell **once**, after
 migrations, only on a database that doesn't already have this data —
-re-running them is not idempotent-safe against a database you care about,
-and neither script is part of the deploy pipeline (`preDeployCommand` runs
-only the migration, deliberately — seeding is a one-time operator action,
-never something that runs automatically against a possibly-existing
-production database).
+re-running them is not idempotent-safe against a database you care about.
+Neither script (nor the migration itself) runs automatically as part of
+any deploy — seeding and migrating are both deliberate, one-time operator
+actions here, never something that runs unattended against a possibly-
+existing production database.
 
 ## Environment variables
 

@@ -320,9 +320,9 @@ Postgres, and running migrations on the free tier) plus the full deploy
 order are in **docs/deployment.md** — read that before deploying.
 
 Quick version: create the Blueprint from this repo, set the two database
-URLs and an LLM API key, run `alembic upgrade head` (via
-`preDeployCommand` on paid instance types, or once manually via the Render
-Shell on free ones), then open the frontend's `*.onrender.com` URL and
+URLs and an LLM API key, run `alembic upgrade head` once via the Render
+Shell (Render's free tier rejects `preDeployCommand` outright, so this
+repo doesn't use it), then open the frontend's `*.onrender.com` URL and
 verify with:
 
 ```bash

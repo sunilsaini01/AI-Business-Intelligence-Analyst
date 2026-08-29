@@ -1,8 +1,10 @@
 # Render Blueprint — see docs/deployment.md for the full deployment guide,
-# including the two manual steps Render's declarative config cannot express
-# (marked `sync: false` below) and the free-tier alternative to
-# `preDeployCommand`. This file does not invent any new configuration
-# surface: every env var name below is one app/core/config.py already reads.
+# including the manual steps Render's declarative config cannot express:
+# the two `sync: false` database env vars below, and running migrations
+# by hand (preDeployCommand is rejected outright by Render's Blueprint
+# validator for free-tier services, so it's intentionally not used here).
+# This file does not invent any new configuration surface: every env var
+# name below is one app/core/config.py already reads.
 #
 # Architecture (Section 7 of the final deployment phase):
 #
@@ -33,13 +35,13 @@ services:
     dockerContext: .
     plan: free
     healthCheckPath: /api/v1/health/ready
-    # Runs `alembic upgrade head` before the new instance takes traffic.
-    # NOTE: preDeployCommand requires a paid instance type — Render's free
-    # web services do not support it. On the free tier, run migrations
-    # manually once via the Render Shell after the first deploy (see
-    # docs/deployment.md); a from-scratch `bi_agent` database has no
-    # tables until this runs.
-    preDeployCommand: python -m alembic upgrade head
+    # Migrations are NOT run automatically: preDeployCommand is rejected
+    # by Render's Blueprint validator for free-tier services (a hard
+    # error, not a no-op) — so this must stay unset while aibia-api is on
+    # plan: free. Run migrations manually once via the Render Shell after
+    # the first deploy (see docs/deployment.md); a from-scratch `bi_agent`
+    # database has no tables until this runs:
+    #   python -m alembic upgrade head
     envVars:
       # --- Database (Section 10/11) ---
       # Both of these MUST be set manually after aibia-postgres is
