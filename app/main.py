@@ -4,9 +4,10 @@ import uuid
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api.routes import analysis, evaluation, health, reports
+from app.api.routes import analysis, auth, evaluation, health, reports
 from app.core.config import get_settings
 from app.core.logging import configure_logging, get_logger
 from app.core.security import RateLimitMiddleware, safe_error_response
@@ -27,6 +28,15 @@ app = FastAPI(title="AI Business Intelligence Analyst", version="0.1.0", lifespa
 
 app.add_middleware(RateLimitMiddleware, enabled=False)
 
+_frontend_origins = [origin.strip() for origin in get_settings().frontend_origin.split(",") if origin.strip()]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_frontend_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
@@ -36,6 +46,7 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
 
 
 app.include_router(health.router, prefix="/api/v1")
+app.include_router(auth.router, prefix="/api/v1")
 app.include_router(analysis.analyze_router, prefix="/api/v1")
 app.include_router(analysis.router, prefix="/api/v1")
 app.include_router(reports.router, prefix="/api/v1")
