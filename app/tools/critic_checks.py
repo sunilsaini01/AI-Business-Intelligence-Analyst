@@ -90,13 +90,26 @@ def _add_pct(pool: set[float], value: float) -> None:
     pool.add(abs(value))
 
 
-def _collect_known_values(analysis_results: dict[str, Any], sql_queries: list[dict[str, Any]]) -> tuple[set[float], set[float]]:
+def _collect_known_values(
+    analysis_results: dict[str, Any],
+    sql_queries: list[dict[str, Any]],
+    ml_results: dict[str, Any] | None = None,
+) -> tuple[set[float], set[float]]:
     """Returns (values_pool, percentages_pool) — every number the report is
     allowed to cite, gathered from analysis_results and the raw evidence
     rows underneath it. Deliberately broad (includes raw SQL row values too)
     since a broader "known good" pool only makes this check less trigger-happy
     on things that are actually fine — the failure mode we care about
     (a genuinely fabricated number) won't be in the pool no matter how broad.
+
+    `ml_results` (Phase 15, Objective 4) is optional and additive: when the
+    ML Agent produced a real result, its metrics/predictions/feature-
+    importance values are genuine, deterministically-computed numbers
+    (never LLM-invented — app/agents/ml_agent.py never calls an LLM) and
+    are just as legitimate for the report to cite as anything from
+    analysis_results. Only numeric VALUES go in the pool — `reason`/
+    `limitations` text is never scanned, and a failed/insufficient-data
+    result (`ml_results["ok"] is False`) contributes nothing.
     """
     values: set[float] = set()
     percentages: set[float] = set()
@@ -149,18 +162,36 @@ def _collect_known_values(analysis_results: dict[str, Any], sql_queries: list[di
                 if isinstance(v, (int, float)):
                     values.add(float(v))
 
+    if ml_results and ml_results.get("ok"):
+        ml_numbers: list[Any] = list(ml_results.get("metrics", {}).values())
+        ml_numbers += list(ml_results.get("forecast_next") or [])
+        ml_numbers += [v for pred in (ml_results.get("sample_predictions") or []) for v in pred.values()]
+        ml_numbers += list((ml_results.get("feature_importance") or {}).values())
+        for v in ml_numbers:
+            if isinstance(v, (int, float)):
+                values.add(float(v))
+                # A fractional metric (e.g. accuracy=0.752) is often quoted
+                # in report text as a percentage ("75.2% accuracy") — both
+                # phrasings are the same real number.
+                if 0 <= v <= 1:
+                    _add_pct(percentages, float(v) * 100)
+
     return values, percentages
 
 
 def check_numerical_grounding(
-    report: BusinessReport, analysis_results: dict[str, Any], sql_queries: list[dict[str, Any]]
+    report: BusinessReport,
+    analysis_results: dict[str, Any],
+    sql_queries: list[dict[str, Any]],
+    ml_results: dict[str, Any] | None = None,
 ) -> list[CriticFinding]:
     """Every number in the report's free text must trace back to a number
-    that actually appears in analysis_results or the raw evidence — Sec 6's
-    diagnostic Example 4 ("July revenue = $170,000" when the real figure is
-    $150,633.02) is exactly what this catches.
+    that actually appears in analysis_results, the raw evidence, or a real
+    ML Agent result (Phase 15) — Sec 6's diagnostic Example 4 ("July
+    revenue = $170,000" when the real figure is $150,633.02) is exactly
+    what this catches.
     """
-    values_pool, pct_pool = _collect_known_values(analysis_results, sql_queries)
+    values_pool, pct_pool = _collect_known_values(analysis_results, sql_queries, ml_results)
     findings: list[CriticFinding] = []
 
     texts = [("executive_summary", report["executive_summary"])] + [
@@ -488,9 +519,10 @@ def run_all_deterministic_checks(
     analysis_results: dict[str, Any],
     sql_queries: list[dict[str, Any]],
     charts: list[ChartRecord],
+    ml_results: dict[str, Any] | None = None,
 ) -> list[CriticFinding]:
     findings: list[CriticFinding] = []
-    findings += check_numerical_grounding(report, analysis_results, sql_queries)
+    findings += check_numerical_grounding(report, analysis_results, sql_queries, ml_results)
     findings += check_period_consistency(report, analysis_results)
     findings += check_contribution_arithmetic(analysis_results)
     findings += check_evidence_sufficiency(report, analysis_results)

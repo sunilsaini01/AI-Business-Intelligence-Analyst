@@ -402,3 +402,125 @@ def test_summarize_any_error_is_fail():
         [{"severity": "WARNING", "category": "x", "message": "m"}, {"severity": "ERROR", "category": "y", "message": "m2"}]
     )
     assert status == "FAIL"
+
+
+# --- Phase 15, Objective 4: ML result grounding -----------------------------
+
+
+def _ml_forecast_result() -> dict:
+    return {
+        "ok": True, "task": "forecasting", "model_name": "linear_trend_baseline",
+        "metrics": {"mae": 16271.56, "rmse": 16372.53, "mape_pct": 10.92},
+        "forecast_next": [159374.02],
+        "sample_predictions": [{"period_index": 18, "actual": 147413.75, "predicted": 165500.80}],
+        "feature_importance": None,
+    }
+
+
+def _ml_churn_result() -> dict:
+    return {
+        "ok": True, "task": "churn_risk", "model_name": "logistic_regression",
+        "metrics": {"accuracy": 0.752, "precision": 0.7627, "recall": 0.7258, "f1": 0.7438, "roc_auc": 0.8246},
+        "sample_predictions": [{"customer_id": 80, "predicted_churn": 1, "churn_probability": 0.7958}],
+        "feature_importance": {"order_count": -1.1293, "tenure_days": 0.0833},
+    }
+
+
+def test_a_genuine_ml_forecast_number_is_not_flagged_as_ungrounded():
+    report = _report(
+        "Revenue is forecast to reach 159374.02 next month.",
+        ["Forecast next-period revenue: 159374.02"],
+    )
+    findings = check_numerical_grounding(report, {}, [], _ml_forecast_result())
+    assert findings == []
+
+
+def test_a_genuine_ml_metric_cited_as_a_percentage_is_not_flagged():
+    """0.7520 (accuracy) is a legitimate citation both as "0.752" and as
+    "75.2%" — the grounding pool must accept the percentage phrasing too
+    (see _collect_known_values' ml_results handling)."""
+    report = _report(
+        "The churn model reached 75.2% accuracy on held-out customers.",
+        ["Model accuracy: 75.2%"],
+    )
+    findings = check_numerical_grounding(report, {}, [], _ml_churn_result())
+    assert findings == []
+
+
+def test_a_fabricated_ml_number_is_still_flagged_even_with_ml_results_present():
+    """A genuine ml_results pool must not become a blanket exemption — a
+    number that ISN'T actually anywhere in metrics/predictions/feature_
+    importance must still fail, exactly as it would without ml_results at
+    all."""
+    report = _report(
+        "Revenue is forecast to reach 999999.99 next month.",
+        ["Forecast next-period revenue: 999999.99"],
+    )
+    findings = check_numerical_grounding(report, {}, [], _ml_forecast_result())
+    assert any(f["severity"] == "ERROR" for f in findings)
+
+
+def test_a_failed_ml_result_contributes_nothing_to_the_grounding_pool():
+    """ok=False (not appropriate / insufficient data) must not leak any
+    stray numbers (e.g. from a partially-populated dict) into what a
+    report is allowed to cite."""
+    failed_ml = {"ok": False, "status": "insufficient_data", "task": "forecasting", "reason": "not enough history"}
+    report = _report("Revenue is forecast to reach 159374.02 next month.", [])
+    findings = check_numerical_grounding(report, {}, [], failed_ml)
+    assert any(f["severity"] == "ERROR" for f in findings)
+
+
+def test_ml_results_none_behaves_identically_to_omitting_the_argument():
+    report = _report("July revenue was $170,000.", [])
+    with_none = check_numerical_grounding(report, _july_benchmark_analysis_results(), [], None)
+    without_arg = check_numerical_grounding(report, _july_benchmark_analysis_results(), [])
+    assert with_none == without_arg
+
+
+def test_run_all_deterministic_checks_accepts_and_forwards_ml_results():
+    report = _report(
+        "Revenue is forecast to reach 159374.02 next month.",
+        ["Forecast next-period revenue: 159374.02"],
+        confidence="Medium",
+    )
+    findings = run_all_deterministic_checks(report, {}, [], [], _ml_forecast_result())
+    assert not any(f["category"] == "numerical" for f in findings)
+
+
+# --- Phase 16, Section 9: ML causal-claim boundary (verified, not modified) -
+#
+# check_causal_claims (Sec 9) was never extended to treat ml_results'
+# feature_importance as a "dominant contributor" — a causal-sounding claim
+# tied to an ML result therefore has no way to satisfy it, and gets
+# rejected the same way an unsupported SQL-evidence causal claim would.
+# This is INTENTIONALLY conservative (per this phase's own instruction:
+# "do not claim causality from feature importance") and is verified here
+# as existing, correct behavior — not changed, per "do not modify Critic
+# behavior unless a real regression is found".
+
+
+def test_a_causal_claim_citing_ml_feature_importance_is_rejected_with_no_dominant_contributor():
+    """The synthesis prompt (app/agents/supervisor.py) explicitly forbids
+    this ('do not claim feature importance proves what CAUSES an
+    outcome'), and if it happened anyway, the Critic still catches it —
+    conservatively, via the existing "no dominant contributor" path, not a
+    purpose-built ML-causation check. That's an acceptable, safe overlap,
+    not a gap: the unsupported claim is rejected either way."""
+    report = _report(
+        "Revenue is declining because customers with low order counts are churning.",
+        [],
+    )
+    findings = check_causal_claims(report, {})  # no contributions in analysis_results
+    assert any(f["severity"] == "ERROR" and f["category"] == "causal_claim" for f in findings)
+
+
+def test_a_hedged_non_causal_ml_citation_is_not_flagged_as_a_causal_claim():
+    """The inverse proof: correctly-hedged ML language (no "because"/"drove"/
+    "caused by" — matching what the synthesis prompt actually asks for)
+    must NOT be penalized just for discussing a churn-risk result."""
+    report = _report(
+        "The churn risk model flagged a subset of customers as at risk, based on order history and activity.",
+        [],
+    )
+    findings = check_causal_claims(report, {})
+    assert findings == []

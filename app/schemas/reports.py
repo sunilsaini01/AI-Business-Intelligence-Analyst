@@ -24,6 +24,17 @@ class ReportResponse(BaseModel):
     # before this migration (report_extras == {}) still serializes cleanly.
     verified_claims: list[str] = []
     analysis_explanation: str = ""
+    # Phase 15, Objective 4 — deterministic rendering of the ML Agent's
+    # result (app/agents/ml_agent.py, app/agents/report_agent.py::
+    # _format_ml_summary). "" when the question wasn't predictive, or for
+    # a report persisted before this field existed.
+    ml_summary: str = ""
+    # The full structured result verbatim (task/target/features/model_name/
+    # train_size/test_size/metrics/predictions/feature_importance/
+    # limitations/confidence, or {"ok": False, "status": ..., "reason": ...}
+    # — see app/agents/ml_agent.py). None when the question wasn't
+    # predictive, or for a report persisted before this field existed.
+    ml_results: dict[str, Any] | None = None
     visualizations: list[dict[str, Any]] = []
     technical_details: dict[str, Any] = {}
     narrative: str | None = None

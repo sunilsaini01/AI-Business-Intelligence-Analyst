@@ -439,6 +439,50 @@ async def test_narrative_disabled_by_default_makes_zero_llm_call():
 
 
 @pytest.mark.asyncio
+async def test_ml_results_present_does_not_enable_narrative_or_call_the_llm():
+    """Phase 16, Section 10 — a predictive question's ml_results must not
+    change report_agent_node's own narrative decision at all: it's still
+    driven purely by REPORT_NARRATIVE_ENABLED (default False) and the
+    Critic's status, exactly as without ML involved. Report Agent only
+    ever FORMATS the already-computed ml_results (_format_ml_summary,
+    zero LLM calls) — it never recalculates or narrates it."""
+    llm = _CountingLLM()
+    state = _state_with()
+    state["ml_results"] = {
+        "ok": True, "status": "ok", "task": "forecasting", "model_name": "linear_trend_baseline",
+        "target": "monthly_revenue", "features": ["month_index"], "train_size": 18, "test_size": 2,
+        "metrics": {"mae": 16271.56, "rmse": 16372.53, "mape_pct": 10.92},
+        "sample_predictions": [], "forecast_next": [159374.02], "feature_importance": None,
+        "limitations": ["A simple linear-trend baseline, not seasonal or causal."], "confidence": "Medium",
+    }
+    result = await report_agent_node(state, llm=llm)  # narrative_enabled not passed -> reads settings (False)
+    assert result["report"]["narrative"] is None
+    assert llm.calls == 0
+    # ml_summary IS populated (deterministic formatting, not the narrative gate)
+    assert result["report"]["ml_summary"] != ""
+    assert "linear_trend_baseline" in result["report"]["ml_summary"]
+
+
+@pytest.mark.asyncio
+async def test_report_agent_never_recalculates_ml_metrics_it_only_formats_them():
+    """The formatted ml_summary text must trace verbatim to the given
+    ml_results' own numbers — report_agent_node has no model-fitting code
+    path at all, so this also serves as a structural proof there's nowhere
+    for a recalculation to happen."""
+    state = _state_with()
+    state["ml_results"] = {
+        "ok": True, "status": "ok", "task": "forecasting", "model_name": "linear_trend_baseline",
+        "target": "monthly_revenue", "features": ["month_index"], "train_size": 18, "test_size": 2,
+        "metrics": {"mae": 16271.56, "rmse": 16372.53, "mape_pct": 10.92},
+        "sample_predictions": [], "forecast_next": [159374.02], "feature_importance": None,
+        "limitations": [], "confidence": "Medium",
+    }
+    result = await report_agent_node(state, llm=ScriptedLLMClient({}))
+    assert "159,374.02" in result["report"]["ml_summary"]
+    assert "16,271.56" in result["report"]["ml_summary"]
+
+
+@pytest.mark.asyncio
 async def test_narrative_disabled_explicitly_makes_zero_llm_call_even_on_warn():
     warn_feedback = {
         "status": "WARN", "score": 0.8, "findings": [],

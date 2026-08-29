@@ -33,6 +33,7 @@ defense, the Critic is the second.
 from __future__ import annotations
 
 import time
+from typing import Any
 
 from app.agents.prompt_utils import compact_rows_json
 from app.agents.schemas import SupervisorPlan, SupervisorSynthesis
@@ -67,24 +68,34 @@ now synthesizing a final answer from evidence already gathered by SQL queries an
 deterministic Analysis Agent (pandas/NumPy, not an LLM — every number in it was computed by code).
 
 STRICT RULES:
-- Every number in your answer must appear verbatim in the Deterministic Analysis or the raw
-  Evidence below. Never compute, estimate, or infer a number that isn't already there — the
-  Analysis Agent already did the arithmetic; you narrate it, you don't redo it.
+- Every number in your answer must appear verbatim in the Deterministic Analysis, the ML Result, or
+  the raw Evidence below. Never compute, estimate, or infer a number that isn't already there — the
+  Analysis Agent already did the arithmetic (and the ML Agent already fit/evaluated any model); you
+  narrate it, you don't redo it.
 - Deterministic Analysis "facts" are ground truth — state them as fact.
 - Deterministic Analysis "interpretations" are the analysis system's own reasoning about which
   contributor likely explains a change — you may cite them, but phrase them as what the evidence
   suggests, not as a certainty, and do not substitute a different explanation of your own.
 - If Deterministic Analysis reports insufficient_evidence=true for a diagnostic question, your
   answer must also acknowledge that — do not override it with your own reading of the raw rows.
+- If an ML Result is present but reports it could not run (insufficient data / not applicable), say
+  so honestly rather than describing a prediction that was never actually made.
+- ML metrics/predictions are a model's statistical result, never a certainty and never a cause —
+  do not phrase a churn-risk score or forecast as guaranteed, and do not claim feature importance
+  proves what CAUSES an outcome.
 - If there is no Deterministic Analysis at all, fall back to the raw Evidence directly, same
   strict-grounding rule.
-- key_findings must each cite a specific number from the Deterministic Analysis or the Evidence.
+- key_findings must each cite a specific number from the Deterministic Analysis, the ML Result, or
+  the Evidence.
 {critic_feedback_section}
 Original question: {question}
 Plan that was executed: {plan}
 
 Deterministic Analysis (facts/interpretations/limitations, computed by pandas — not the LLM):
 {analysis_text}
+
+ML Result (if any — computed by scikit-learn, not the LLM; see app/agents/ml_agent.py):
+{ml_text}
 
 Raw evidence gathered (query purpose, and the actual rows returned):
 {evidence_text}
@@ -110,6 +121,7 @@ def _direct_out_of_scope_report(reason: str) -> dict:
         # stay at their empty defaults rather than being left unset.
         "verified_claims": [],
         "analysis_explanation": "",
+        "ml_summary": "",
         "visualizations": [],
         "technical_details": {},
         "narrative": None,
@@ -215,6 +227,31 @@ def _format_analysis_for_prompt(analysis: dict | None) -> str:
     return "\n".join(lines) if lines else "(no deterministic analysis was performed)"
 
 
+def _format_ml_for_prompt(ml_results: dict[str, Any] | None) -> str:
+    """Renders state["ml_results"] (Phase 15, Objective 4,
+    app/agents/ml_agent.py) so the Supervisor CAN legitimately cite a real
+    forecast/churn-risk number instead of the ML Agent's work going
+    unmentioned — the Critic's numerical grounding check (app/tools/
+    critic_checks.py::_collect_known_values) accepts exactly these same
+    values, so anything rendered here is safe to cite verbatim. `None`
+    (not a predictive question) or a failed/insufficient-data result both
+    render an explicit, honest line rather than silence — the synthesis
+    prompt's own rule tells the model to relay that honestly, never
+    invent a prediction that didn't happen.
+    """
+    if ml_results is None:
+        return "(no ML task was run for this question)"
+    if not ml_results.get("ok"):
+        return f"ML task attempted but not available: {ml_results.get('reason', 'unknown reason')}"
+
+    lines = [f"Task: {ml_results.get('task')}, model: {ml_results.get('model_name')}"]
+    for key, value in (ml_results.get("metrics") or {}).items():
+        lines.append(f"Metric {key}: {value}")
+    if ml_results.get("task") == "forecasting" and ml_results.get("forecast_next"):
+        lines.append(f"Forecast for the next period: {ml_results['forecast_next'][0]}")
+    return "\n".join(lines)
+
+
 async def _synthesize(state: AgentState, llm: LLMClientProtocol) -> AgentState:
     evidence_lines = []
     for q in state["sql_queries"]:
@@ -226,6 +263,7 @@ async def _synthesize(state: AgentState, llm: LLMClientProtocol) -> AgentState:
             evidence_lines.append(f"- Query rejected: {q['rejection_reason']}")
     evidence_text = "\n".join(evidence_lines) if evidence_lines else "(no evidence gathered)"
     analysis_text = _format_analysis_for_prompt(state.get("analysis_results"))
+    ml_text = _format_ml_for_prompt(state.get("ml_results"))
 
     critic_feedback = state.get("critic_feedback")
     critic_feedback_section = ""
@@ -239,6 +277,7 @@ async def _synthesize(state: AgentState, llm: LLMClientProtocol) -> AgentState:
             question=state["question"],
             plan="; ".join(state["plan"]),
             analysis_text=analysis_text,
+            ml_text=ml_text,
             evidence_text=evidence_text,
             critic_feedback_section=critic_feedback_section,
         ),
@@ -259,6 +298,7 @@ async def _synthesize(state: AgentState, llm: LLMClientProtocol) -> AgentState:
         # once the Critic has reviewed this synthesis — empty until then.
         "verified_claims": [],
         "analysis_explanation": "",
+        "ml_summary": "",
         "visualizations": [],
         "technical_details": {},
         "narrative": None,

@@ -27,14 +27,22 @@ from app.graph.workflow import get_graph
 # `current_stage`/`failed_node` for execution_metadata the same honest way
 # frontend/progress.py derives its checklist: "last node confirmed done",
 # never "currently executing".
-_PIPELINE_STAGES = ["supervisor", "sql_agent", "analysis_agent", "visualization_agent", "critic", "report_agent"]
+_PIPELINE_STAGES = [
+    "supervisor", "sql_agent", "analysis_agent", "ml_agent", "visualization_agent", "critic", "report_agent",
+]
 
 logger = get_logger(__name__)
 
 
-async def create_session(question: str) -> uuid.UUID:
+async def create_session(question: str, user_id: uuid.UUID | None = None) -> uuid.UUID:
+    """`user_id=None` (every direct-call test, and any pre-Phase-14 caller)
+    creates an ownerless row — still fully functional, just not attributable
+    to a user for the Phase 14 ownership check (app/api/routes/analysis.py).
+    The real HTTP route (POST /analyze) always passes the authenticated
+    caller's id; this default only exists so service-level tests don't all
+    need a registered user to exercise the graph/persistence behavior."""
     async with async_session_factory() as db:
-        session_row = AnalysisSession(question=question, status=SessionStatus.PENDING)
+        session_row = AnalysisSession(question=question, status=SessionStatus.PENDING, user_id=user_id)
         db.add(session_row)
         await db.commit()
         await db.refresh(session_row)
@@ -260,6 +268,18 @@ async def run_analysis(analysis_id: uuid.UUID, question: str, graph: Any = None)
                     report_extras={
                         "verified_claims": report.get("verified_claims", []),
                         "analysis_explanation": report.get("analysis_explanation", ""),
+                        "ml_summary": report.get("ml_summary", ""),
+                        # Phase 15, Objective 4: the FULL structured ML result
+                        # (task/target/features/model_name/train_size/
+                        # test_size/metrics/predictions/feature_importance/
+                        # limitations/confidence — see app/agents/ml_agent.py)
+                        # verbatim from graph state, not just report["ml_summary"]'s
+                        # rendered text — read from result_state (not `report`,
+                        # which never carries it) since that's this function's
+                        # own already-available full final state, additive JSONB,
+                        # no migration needed. None when the question wasn't
+                        # predictive.
+                        "ml_results": (result_state or {}).get("ml_results"),
                         "visualizations": report.get("visualizations", []),
                         "technical_details": report.get("technical_details", {}),
                         "narrative": report.get("narrative"),

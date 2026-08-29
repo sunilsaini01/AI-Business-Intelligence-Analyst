@@ -192,6 +192,51 @@ def _format_analysis_explanation(analysis_results: dict[str, Any] | None) -> str
     return " ".join(lines)
 
 
+def _format_ml_summary(ml_results: dict[str, Any] | None) -> str:
+    """Deterministic, no-LLM formatting of state["ml_results"] (Phase 15,
+    Objective 4) — same "verbatim from already-computed state" contract as
+    _format_analysis_explanation: every number here comes straight from
+    app/agents/ml_agent.py's real model run, this function only renders
+    it. `None` (the question wasn't predictive) renders nothing; a
+    structured `ok=False` result (not appropriate / insufficient data)
+    renders an honest one-line explanation rather than silently omitting
+    the fact that a prediction was attempted — see ml_agent.py's own
+    docstring on why that distinction matters.
+    """
+    if not ml_results:
+        return ""
+    if not ml_results.get("ok"):
+        reason = ml_results.get("reason") or "not available for this question."
+        return f"Predictive analysis: {reason}"
+
+    if ml_results.get("task") == "forecasting":
+        forecast_next = ml_results.get("forecast_next") or []
+        next_value = f"{forecast_next[0]:,.2f}" if forecast_next else "n/a"
+        mae = ml_results.get("metrics", {}).get("mae")
+        mae_text = f", MAE {mae:,.2f} on held-out history" if mae is not None else ""
+        return (
+            f"Forecast ({ml_results.get('model_name', 'model')}): next-period "
+            f"{ml_results.get('target', 'value')} projected at {next_value}{mae_text}."
+        )
+
+    if ml_results.get("task") == "churn_risk":
+        metrics = ml_results.get("metrics", {})
+        accuracy = metrics.get("accuracy")
+        roc_auc = metrics.get("roc_auc")
+        parts = []
+        if accuracy is not None:
+            parts.append(f"{accuracy * 100:.1f}% accuracy")
+        if roc_auc is not None:
+            parts.append(f"{roc_auc:.2f} ROC-AUC")
+        score_text = " (" + ", ".join(parts) + ")" if parts else ""
+        return (
+            f"Churn risk model ({ml_results.get('model_name', 'model')}) evaluated on "
+            f"{ml_results.get('test_size', 0)} held-out customers{score_text}."
+        )
+
+    return ""
+
+
 def _build_visualizations(charts: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """References the Visualization Agent's own already-selected charts
     (Phase 7) — never re-derives chart type or re-reads chart data; the full
@@ -225,6 +270,7 @@ async def _try_narrative(
     analysis_results: dict[str, Any],
     sql_queries: list[dict[str, Any]],
     llm: LLMClientProtocol,
+    ml_results: dict[str, Any] | None = None,
 ) -> tuple[str | None, ErrorCategory | None]:
     """One optional, isolated LLM call — pure wording, re-validated against
     the same numeric-grounding check the Critic uses before being trusted.
@@ -252,7 +298,7 @@ async def _try_narrative(
         return None, classify_exception(exc)
 
     probe: BusinessReport = {**report, "executive_summary": result.narrative, "key_findings": []}
-    findings = check_numerical_grounding(probe, analysis_results, sql_queries)
+    findings = check_numerical_grounding(probe, analysis_results, sql_queries, ml_results)
     if any(f["severity"] == "ERROR" for f in findings):
         return None, None  # the rewrite introduced something not in the evidence -> discard, don't ship it
     return result.narrative, None
@@ -283,6 +329,7 @@ async def report_agent_node(
         critic_feedback = state.get("critic_feedback")
         report["verified_claims"] = _build_verified_claims(critic_feedback)
         report["analysis_explanation"] = _format_analysis_explanation(state.get("analysis_results"))
+        report["ml_summary"] = _format_ml_summary(state.get("ml_results"))
         report["visualizations"] = _build_visualizations(state.get("charts", []))
 
         if narrative_enabled is None:
@@ -293,7 +340,11 @@ async def report_agent_node(
         if narrative_enabled and status in ("PASS", "WARN"):
             llm = llm or get_llm_client()
             report["narrative"], narrative_error_category = await _try_narrative(
-                report, state.get("analysis_results") or {}, state.get("sql_queries") or [], llm
+                report,
+                state.get("analysis_results") or {},
+                state.get("sql_queries") or [],
+                llm,
+                state.get("ml_results"),
             )
         else:
             report["narrative"] = None

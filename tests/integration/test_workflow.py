@@ -74,6 +74,7 @@ async def test_supervisor_sql_agent_round_trip_reaches_report():
         "supervisor", "supervisor",
         "sql_agent", "sql_agent",
         "analysis_agent", "analysis_agent",
+        "ml_agent", "ml_agent",  # Phase 15: always in the chain, no-op here (intent != "predictive")
         "visualization_agent", "visualization_agent",
         "supervisor", "supervisor",
         "critic", "critic",
@@ -85,6 +86,67 @@ async def test_supervisor_sql_agent_round_trip_reaches_report():
     assert result["report"]["verified_claims"] == ["Customer count evidence retrieved."]
     assert result["report"]["visualizations"] == [{"chart_type": "kpi", "title": result["charts"][0]["title"], "subtitle": result["charts"][0].get("subtitle")}]
     assert result["report"]["technical_details"]["critic_status"] == "PASS"
+
+
+@pytest.mark.asyncio
+async def test_predictive_question_runs_ml_agent_and_the_report_cites_it():
+    """Phase 15, Objective 4 — graph-level integration: a "predictive"-
+    classified plan reaches ml_agent (real forecast query + real
+    scikit-learn fit against the seeded DB, no LLM), and the Supervisor's
+    synthesis is free to cite the resulting metric since app/agents/
+    ml_agent.py wrote it into state["ml_results"] before synthesis runs —
+    this proves ml_agent's output actually reaches the existing Critic/
+    Report architecture, not just that the node executes in isolation
+    (see tests/agents/test_ml_agent.py for that)."""
+    fake_llm = ScriptedLLMClient(
+        {
+            SupervisorPlan: [
+                SupervisorPlan(
+                    out_of_scope=False,
+                    intent="predictive",
+                    target_schema="analytics",
+                    steps=["Forecast next month's revenue"],
+                    reasoning="A forecasting question needs the ML Agent's trend model.",
+                )
+            ],
+            SQLGeneration: [
+                SQLGeneration(sql="SELECT COUNT(*) AS n FROM analytics.customers", purpose="context only"),
+            ],
+            SupervisorSynthesis: [
+                SupervisorSynthesis(
+                    insufficient_evidence=False,
+                    executive_summary="Revenue is projected to continue its recent trend next month.",
+                    key_findings=["The forecast model projects next month's revenue based on recent history."],
+                    confidence="Medium",
+                    limitations="",
+                )
+            ],
+        }
+    )
+
+    graph = build_graph(llm=fake_llm)
+    result = await graph.ainvoke(new_state("Can you forecast our revenue for next month?"))
+
+    assert result["intent"] == "predictive"
+    ml_results = result["ml_results"]
+    assert ml_results is not None
+    assert ml_results["ok"] is True
+    assert ml_results["task"] == "forecasting"
+
+    # Critic authority preserved: it still ran and reviewed this synthesis
+    # (a plain, number-free executive_summary here, so nothing to flag).
+    assert result["critic_feedback"] is not None
+    assert result["critic_feedback"]["status"] in ("PASS", "WARN")
+
+    # Report Agent owns the presentation — ml_summary is ITS deterministic
+    # rendering of ml_results, not anything the ML Agent or the LLM wrote.
+    assert result["report"]["ml_summary"] != ""
+    assert "linear_trend_baseline" in result["report"]["ml_summary"]
+
+    node_names = [t["node"] for t in result["trace"]]
+    assert "ml_agent" in node_names
+    assert node_names.index("ml_agent") > node_names.index("analysis_agent")
+    assert node_names.index("ml_agent") < node_names.index("visualization_agent")
 
 
 @pytest.mark.asyncio

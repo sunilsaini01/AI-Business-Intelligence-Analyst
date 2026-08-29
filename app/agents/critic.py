@@ -121,7 +121,7 @@ async def critic_node(state: AgentState, llm: LLMClientProtocol | None = None) -
         ]
     else:
         findings = run_all_deterministic_checks(
-            report, state["analysis_results"], state["sql_queries"], state["charts"]
+            report, state["analysis_results"], state["sql_queries"], state["charts"], state.get("ml_results")
         )
         llm = llm or get_llm_client()
         try:
