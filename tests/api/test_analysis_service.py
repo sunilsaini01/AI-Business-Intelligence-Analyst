@@ -18,7 +18,8 @@ import httpx
 import pytest
 from sqlalchemy import select
 
-from app.agents.schemas import SQLGeneration, SupervisorPlan, SupervisorSynthesis
+from app.agents.schemas import CriticSemanticCheck, ReportNarrative, SQLGeneration, SupervisorPlan, SupervisorSynthesis
+from app.core.config import get_settings
 from app.db.database import async_session_factory
 from app.db.models import EvaluationRun, SessionStatus
 from app.graph.workflow import build_graph
@@ -136,6 +137,7 @@ async def test_run_analysis_persists_full_trace_through_report_agent():
         "supervisor", "supervisor",
         "sql_agent", "sql_agent",
         "analysis_agent", "analysis_agent",
+        "ml_agent", "ml_agent",  # Phase 15: always in the chain, no-op here (intent != "predictive")
         "visualization_agent", "visualization_agent",
         "supervisor", "supervisor",
         "critic", "critic",
@@ -191,7 +193,7 @@ async def test_execution_metadata_populated_on_success():
     assert metadata["final_status"] == "DONE"
     assert metadata["current_stage"] == "report_agent"
     assert metadata["completed_nodes"] == [
-        "supervisor", "sql_agent", "analysis_agent", "visualization_agent", "critic", "report_agent",
+        "supervisor", "sql_agent", "analysis_agent", "ml_agent", "visualization_agent", "critic", "report_agent",
     ]
     assert metadata["failed_node"] is None
     assert metadata["error_category"] is None
@@ -247,6 +249,156 @@ async def test_execution_metadata_infers_the_failed_node_from_completed_nodes():
 
     assert metadata["completed_nodes"] == ["supervisor"]
     assert metadata["failed_node"] == "sql_agent"
+    assert metadata["error_category"] == "application_error"
+
+
+# --- Phase 14, Issue 5: execution_metadata reflects ACTUAL behavior, ------
+# --- not just key presence -------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_execution_metadata_reflects_a_critic_fail_exhausted_degradation():
+    """A FAIL that survives all retries still completes the run (DONE, not
+    FAILED — app/agents/critic.py::_force_degrade downgrades confidence and
+    discloses the issue, it doesn't abort). execution_metadata must show
+    the real retry_count actually consumed (== critic_max_retries) and
+    report_generated=True, since the degraded report genuinely is
+    persisted — never left showing a success shape for what was actually a
+    contested run.
+
+    Forces the FAIL via a deterministic check (an executive_summary citing
+    a number nowhere in the evidence -> check_numerical_grounding, app/tools/
+    critic_checks.py) rather than the semantic LLM check — the semantic
+    check only runs when analysis_results has diagnostic facts/
+    interpretations (app/agents/critic.py::_semantic_check), which a plain
+    COUNT query never produces, so relying on it here would silently no-op
+    instead of failing."""
+    settings = get_settings()
+    forced_fail = ScriptedLLMClient(
+        {
+            SupervisorPlan: [
+                SupervisorPlan(
+                    out_of_scope=False, intent="descriptive", target_schema="analytics",
+                    steps=["Count total customers"], reasoning="x",
+                )
+            ],
+            SQLGeneration: [SQLGeneration(sql="SELECT COUNT(*) AS n FROM analytics.customers", purpose="count")],
+            # One synthesis per attempt: 1 initial + one per retry
+            # (critic_max_retries) = 1 + settings.critic_max_retries. Every
+            # attempt repeats the same fabricated, ungrounded figure, so
+            # every attempt FAILs the same deterministic check — this is
+            # what proves retries genuinely exhaust rather than happening
+            # to pass on a later attempt.
+            SupervisorSynthesis: [
+                SupervisorSynthesis(
+                    insufficient_evidence=False,
+                    executive_summary="There are 4210000 customers, up 87.3%.",
+                    key_findings=["Customer count retrieved."], confidence="Medium", limitations="",
+                )
+                for _ in range(1 + settings.critic_max_retries)
+            ],
+        }
+    )
+
+    analysis_id = await analysis_service.create_session("How many customers?")
+    await analysis_service.run_analysis(analysis_id, "How many customers?", graph=build_graph(llm=forced_fail))
+
+    session = await analysis_service.get_session(analysis_id)
+    assert session.status == SessionStatus.DONE  # degraded, not FAILED
+
+    metadata = await _get_execution_metadata(analysis_id)
+    assert metadata["final_status"] == "DONE"
+    assert metadata["retry_count"] == settings.critic_max_retries
+    assert metadata["report_generated"] is True
+    assert "critic" in metadata["completed_nodes"]
+    assert "report_agent" in metadata["completed_nodes"]
+
+    report = await analysis_service.get_report(analysis_id)
+    assert report.confidence == "Low"  # _force_degrade's actual effect, not assumed
+
+
+@pytest.mark.asyncio
+async def test_execution_metadata_when_narrative_is_enabled_end_to_end(monkeypatch):
+    """The default-off path (narrative_enabled=False) is already covered by
+    test_execution_metadata_populated_on_success. This exercises the
+    opposite configuration through the real graph/settings wiring — not
+    the narrative_enabled= parameter override tests already cover at the
+    unit level (tests/agents/test_report_agent.py) — to prove
+    execution_metadata's narrative_enabled flag reflects the SETTING that
+    was actually in effect for this run, not a hard-coded default."""
+    monkeypatch.setenv("REPORT_NARRATIVE_ENABLED", "true")
+    get_settings.cache_clear()
+    try:
+        llm = ScriptedLLMClient(
+            {
+                SupervisorPlan: [
+                    SupervisorPlan(
+                        out_of_scope=False, intent="descriptive", target_schema="analytics",
+                        steps=["Count total customers"], reasoning="x",
+                    )
+                ],
+                SQLGeneration: [SQLGeneration(sql="SELECT COUNT(*) AS n FROM analytics.customers", purpose="count")],
+                SupervisorSynthesis: [
+                    SupervisorSynthesis(
+                        insufficient_evidence=False, executive_summary="There are some customers.",
+                        key_findings=["Customer count retrieved."], confidence="High", limitations="",
+                    )
+                ],
+                CriticSemanticCheck: [CriticSemanticCheck(supported=True, unsupported_claims=[], reasoning="ok")],
+                ReportNarrative: [ReportNarrative(narrative="There are some customers, per the data.")],
+            }
+        )
+        analysis_id = await analysis_service.create_session("How many customers?")
+        await analysis_service.run_analysis(analysis_id, "How many customers?", graph=build_graph(llm=llm))
+
+        metadata = await _get_execution_metadata(analysis_id)
+        assert metadata["final_status"] == "DONE"
+        assert metadata["narrative_enabled"] is True
+        assert metadata["report_generated"] is True
+
+        report = await analysis_service.get_report(analysis_id)
+        # Grounded verbatim in the source text -> passes report_agent's own
+        # numeric-grounding re-check -> kept, not degraded to None.
+        assert report.report_extras["narrative"] == "There are some customers, per the data."
+    finally:
+        get_settings.cache_clear()
+
+
+@pytest.mark.asyncio
+async def test_execution_metadata_infers_analysis_agent_as_the_failed_node(monkeypatch):
+    """failed_node must name the ACTUAL failing node, not just "whichever
+    node happens to be after the SQL Agent" — this forces the failure one
+    stage later than the existing SQL-Agent-failure test
+    (test_execution_metadata_infers_the_failed_node_from_completed_nodes)
+    to prove the inference generalizes, by making the Analysis Agent's own
+    (non-LLM) column-classification step raise."""
+    import app.agents.analysis_agent as analysis_agent_module
+
+    def _boom(rows):
+        raise RuntimeError("simulated Analysis Agent bug")
+
+    monkeypatch.setattr(analysis_agent_module, "classify_columns", _boom)
+
+    llm = ScriptedLLMClient(
+        {
+            SupervisorPlan: [
+                SupervisorPlan(
+                    out_of_scope=False, intent="descriptive", target_schema="analytics",
+                    steps=["Count total customers"], reasoning="x",
+                )
+            ],
+            SQLGeneration: [SQLGeneration(sql="SELECT COUNT(*) AS n FROM analytics.customers", purpose="count")],
+        }
+    )
+    analysis_id = await analysis_service.create_session("How many customers?")
+    await analysis_service.run_analysis(analysis_id, "How many customers?", graph=build_graph(llm=llm))
+
+    session = await analysis_service.get_session(analysis_id)
+    assert session.status == SessionStatus.FAILED
+
+    metadata = await _get_execution_metadata(analysis_id)
+    assert metadata["completed_nodes"] == ["supervisor", "sql_agent"]
+    assert metadata["failed_node"] == "analysis_agent"
     assert metadata["error_category"] == "application_error"
 
 
@@ -306,6 +458,152 @@ async def test_report_endpoint_returns_phase10_fields_after_completion(client):
     trace_text = str(detail["trace"]).lower()
     for secret_marker in ("api_key", "password", "secret", "postgresql://"):
         assert secret_marker not in trace_text
+
+
+def _predictive_forecast_llm() -> ScriptedLLMClient:
+    return ScriptedLLMClient(
+        {
+            SupervisorPlan: [
+                SupervisorPlan(
+                    out_of_scope=False, intent="predictive", target_schema="analytics",
+                    steps=["Forecast next month's revenue"], reasoning="Needs the ML Agent's trend model.",
+                )
+            ],
+            SQLGeneration: [SQLGeneration(sql="SELECT COUNT(*) AS n FROM analytics.customers", purpose="context")],
+            SupervisorSynthesis: [
+                SupervisorSynthesis(
+                    insufficient_evidence=False, executive_summary="Revenue is projected to continue its trend.",
+                    key_findings=["The forecast model projects next month's revenue."],
+                    confidence="Medium", limitations="",
+                )
+            ],
+        }
+    )
+
+
+@pytest.mark.asyncio
+async def test_predictive_analysis_exposes_full_ml_results_via_the_api(client):
+    """Phase 15, Objective 4 — end-to-end proof that the ML Agent's real,
+    computed result (not a fabricated one — ml_agent never calls an LLM)
+    reaches the API response, structured, not just as prose."""
+    analysis_id = await analysis_service.create_session("How many customers?")
+    await analysis_service.run_analysis(
+        analysis_id, "Can you forecast revenue for next month?", graph=build_graph(llm=_predictive_forecast_llm())
+    )
+
+    report_resp = await client.get(f"/api/v1/analysis/{analysis_id}/report")
+    assert report_resp.status_code == 200
+    body = report_resp.json()
+
+    assert body["ml_summary"] != ""
+    ml_results = body["ml_results"]
+    assert ml_results["ok"] is True
+    assert ml_results["task"] == "forecasting"
+    assert ml_results["model_name"] == "linear_trend_baseline"
+    assert ml_results["train_size"] > 0
+    assert ml_results["test_size"] > 0
+    assert isinstance(ml_results["metrics"]["mae"], float)
+    assert ml_results["forecast_next"]
+    assert ml_results["confidence"] in ("Low", "Medium", "High")
+    assert ml_results["limitations"]
+
+    metadata = await _get_execution_metadata(analysis_id)
+    assert metadata["final_status"] == "DONE"
+    assert "ml_agent" in metadata["completed_nodes"]
+
+
+@pytest.mark.asyncio
+async def test_non_predictive_analysis_has_no_ml_results_via_the_api(client):
+    analysis_id = await analysis_service.create_session("How many customers?")
+    await analysis_service.run_analysis(analysis_id, "How many customers?", graph=build_graph(llm=_happy_path_llm()))
+
+    report_resp = await client.get(f"/api/v1/analysis/{analysis_id}/report")
+    body = report_resp.json()
+    assert body["ml_summary"] == ""
+    assert body["ml_results"] is None
+
+
+def _predictive_churn_llm() -> ScriptedLLMClient:
+    return ScriptedLLMClient(
+        {
+            SupervisorPlan: [
+                SupervisorPlan(
+                    out_of_scope=False, intent="predictive", target_schema="analytics",
+                    steps=["Identify customers at risk of churn"], reasoning="Needs the ML Agent's churn model.",
+                )
+            ],
+            SQLGeneration: [SQLGeneration(sql="SELECT COUNT(*) AS n FROM analytics.customers", purpose="context")],
+            SupervisorSynthesis: [
+                SupervisorSynthesis(
+                    insufficient_evidence=False, executive_summary="Some customers are flagged as at risk.",
+                    key_findings=["The churn model flagged a subset of customers as at risk."],
+                    confidence="Medium", limitations="",
+                )
+            ],
+        }
+    )
+
+
+@pytest.mark.asyncio
+async def test_concurrent_forecast_and_churn_analyses_never_mix_ml_results():
+    """Phase 16, Section 15 — simultaneous ML analyses (mixed forecast +
+    churn, run via real asyncio.gather concurrency, no sleep-based
+    synchronization, same convention as test_five_concurrent_analyses_
+    remain_fully_isolated) must never cross-contaminate customer data,
+    forecast/churn results, metrics, report_extras, or execution_metadata
+    between sessions."""
+    id_forecast_1 = await analysis_service.create_session("forecast 1")
+    id_churn_1 = await analysis_service.create_session("churn 1")
+    id_forecast_2 = await analysis_service.create_session("forecast 2")
+    id_churn_2 = await analysis_service.create_session("churn 2")
+
+    await asyncio.gather(
+        analysis_service.run_analysis(
+            id_forecast_1, "Forecast revenue for next month", graph=build_graph(llm=_predictive_forecast_llm())
+        ),
+        analysis_service.run_analysis(
+            id_churn_1, "Identify customers at risk of churn", graph=build_graph(llm=_predictive_churn_llm())
+        ),
+        analysis_service.run_analysis(
+            id_forecast_2, "Forecast revenue for next quarter", graph=build_graph(llm=_predictive_forecast_llm())
+        ),
+        analysis_service.run_analysis(
+            id_churn_2, "Which customers are likely to cancel", graph=build_graph(llm=_predictive_churn_llm())
+        ),
+    )
+
+    forecast_1 = await analysis_service.get_report(id_forecast_1)
+    forecast_2 = await analysis_service.get_report(id_forecast_2)
+    churn_1 = await analysis_service.get_report(id_churn_1)
+    churn_2 = await analysis_service.get_report(id_churn_2)
+
+    for report in (forecast_1, forecast_2, churn_1, churn_2):
+        assert report is not None
+
+    # Each session's ml_results genuinely reflects ITS OWN task — a forecast
+    # session must never end up with a churn_risk result or vice versa.
+    for report in (forecast_1, forecast_2):
+        assert report.report_extras["ml_results"]["task"] == "forecasting"
+        assert "forecast_next" in report.report_extras["ml_results"]
+    for report in (churn_1, churn_2):
+        assert report.report_extras["ml_results"]["task"] == "churn_risk"
+        assert "roc_auc" in report.report_extras["ml_results"]["metrics"]
+
+    # Same real DB, same task -> the SAME real metrics are expected and
+    # correct for two forecast sessions (not a contamination signal) — the
+    # actual isolation guarantee is that each session's execution_metadata/
+    # report_extras is its own DB row, not shared/overwritten state.
+    metadata_forecast_1 = await _get_execution_metadata(id_forecast_1)
+    metadata_forecast_2 = await _get_execution_metadata(id_forecast_2)
+    metadata_churn_1 = await _get_execution_metadata(id_churn_1)
+    metadata_churn_2 = await _get_execution_metadata(id_churn_2)
+    for metadata in (metadata_forecast_1, metadata_forecast_2, metadata_churn_1, metadata_churn_2):
+        assert metadata["final_status"] == "DONE"
+        assert "ml_agent" in metadata["completed_nodes"]
+
+    # Sessions themselves stay distinct rows, correctly attributed.
+    session_ids = {id_forecast_1, id_churn_1, id_forecast_2, id_churn_2}
+    assert len(session_ids) == 4
 
 
 @pytest.mark.asyncio
@@ -408,7 +706,9 @@ async def test_two_concurrent_analyses_do_not_interfere():
 
     trace_a = {t.agent_name for t in await analysis_service.get_trace(id_a)}
     trace_b = {t.agent_name for t in await analysis_service.get_trace(id_b)}
-    assert trace_a == {"supervisor", "sql_agent", "analysis_agent", "visualization_agent", "critic", "report_agent"}
+    assert trace_a == {
+        "supervisor", "sql_agent", "analysis_agent", "ml_agent", "visualization_agent", "critic", "report_agent",
+    }
     assert trace_b == {"supervisor"}
 
 
@@ -465,12 +765,43 @@ async def test_five_concurrent_analyses_remain_fully_isolated():
 
         trace = await analysis_service.get_trace(analysis_id)
         assert {t.agent_name for t in trace} == {
-            "supervisor", "sql_agent", "analysis_agent", "visualization_agent", "critic", "report_agent",
+            "supervisor", "sql_agent", "analysis_agent", "ml_agent", "visualization_agent", "critic", "report_agent",
         }
 
         metadata = await _get_execution_metadata(analysis_id)
         assert metadata["final_status"] == "DONE"
         assert metadata["error_category"] is None
+
+
+@pytest.mark.asyncio
+async def test_ten_concurrent_analyses_remain_fully_isolated():
+    """Phase 14, Issue 9: extends the Phase 13 5-concurrent case to 10 —
+    same asyncio.gather-based real concurrency, same per-session
+    distinguishable answer so any cross-session mixing is caught precisely
+    rather than merely detected as 'something's wrong'.
+
+    Letters only, deliberately (matching the existing 5-concurrent test's
+    A-E convention) — a digit-bearing label like "L3" gets its own "3"
+    picked up by check_numerical_grounding as a fabricated, ungrounded
+    number (a real false-positive discovered while writing this test, not
+    a concurrency bug: "Result for L3." reads as citing the value 3.0)."""
+    labels = [chr(ord("A") + i) for i in range(10)]
+    ids = [await analysis_service.create_session(f"Question {label}") for label in labels]
+    assert len(set(ids)) == len(ids)
+
+    await asyncio.gather(
+        *(
+            analysis_service.run_analysis(analysis_id, f"Question {label}", graph=build_graph(llm=_distinct_llm(label)))
+            for analysis_id, label in zip(ids, labels)
+        )
+    )
+
+    for analysis_id, label in zip(ids, labels):
+        session = await analysis_service.get_session(analysis_id)
+        assert session.status == SessionStatus.DONE
+        report = await analysis_service.get_report(analysis_id)
+        assert report.executive_summary == f"Result for {label}."
+        assert report.key_findings == [f"finding-{label}"]
 
 
 @pytest.mark.asyncio
