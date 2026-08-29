@@ -6,12 +6,23 @@ BusinessReport, analysis_results, ChartRecord).
 
 from __future__ import annotations
 
+import pytest
+
 from app.evaluation.metrics import (
+    MAX_FORECAST_MAE_FRACTION_OF_MEAN,
+    MAX_FORECAST_MAPE_PCT,
+    MIN_CHURN_ACCURACY,
+    MIN_CHURN_PRECISION,
+    MIN_CHURN_RECALL,
+    MIN_CHURN_ROC_AUC,
     evaluate_analysis_correctness,
     evaluate_answer_correctness,
+    evaluate_churn_quality,
     evaluate_critic_effectiveness,
     evaluate_critic_verdict,
+    evaluate_forecast_quality,
     evaluate_grounding,
+    evaluate_ml_quality,
     evaluate_report_completeness,
     evaluate_sql_correctness,
     evaluate_visualization_correctness,
@@ -295,6 +306,166 @@ def test_latency_from_trace_sums_exit_durations_per_node_and_total():
     assert result["supervisor"] == 120.0
     assert result["sql_agent"] == 80.0
     assert result["total"] == 200.0
+
+
+def _forecast_ml_results(*, mape_pct=11.0, mae=16000.0, mean_actual=150000.0) -> dict:
+    actual = mean_actual  # a single sample_prediction is enough to establish the mean
+    return {
+        "ok": True, "status": "ok", "task": "forecasting", "model_name": "linear_trend_baseline",
+        "metrics": {"mae": mae, "rmse": mae * 1.02, "mape_pct": mape_pct},
+        "sample_predictions": [{"period_index": 18, "actual": actual, "predicted": actual * 1.05}],
+        "forecast_next": [mean_actual * 1.02],
+    }
+
+
+def _churn_ml_results(*, roc_auc=0.82, accuracy=0.75, precision=0.76, recall=0.73) -> dict:
+    return {
+        "ok": True, "status": "ok", "task": "churn_risk", "model_name": "logistic_regression",
+        "metrics": {"roc_auc": roc_auc, "accuracy": accuracy, "precision": precision, "recall": recall, "f1": 0.74},
+        "feature_importance": {"order_count": -1.1, "tenure_days": 0.08},
+        "sample_predictions": [{"customer_id": 1, "predicted_churn": 1, "churn_probability": 0.8}],
+    }
+
+
+# --- Phase 16: forecast quality regression gate -----------------------------
+
+
+def test_forecast_quality_passes_at_the_phase15_observed_baseline():
+    result = evaluate_forecast_quality(_forecast_ml_results(mape_pct=11.0))
+    assert result["correct"] is True
+    assert result["mape_within_threshold"] is True
+    assert result["mae_within_threshold"] is True
+
+
+def test_forecast_quality_fails_when_mape_exceeds_the_threshold():
+    result = evaluate_forecast_quality(_forecast_ml_results(mape_pct=MAX_FORECAST_MAPE_PCT + 5))
+    assert result["correct"] is False
+    assert result["mape_within_threshold"] is False
+
+
+def test_forecast_quality_fails_when_mae_fraction_exceeds_the_threshold():
+    # mean_actual=100 with mae=50 -> mae_fraction=0.5, well past the 0.20 ceiling,
+    # even though mape_pct itself is set low enough to pass on its own.
+    result = evaluate_forecast_quality(_forecast_ml_results(mape_pct=1.0, mae=50.0, mean_actual=100.0))
+    assert result["correct"] is False
+    assert result["mae_within_threshold"] is False
+    assert result["mae_fraction_of_mean"] == pytest.approx(0.5)
+
+
+def test_forecast_quality_exactly_at_the_threshold_boundary_passes():
+    result = evaluate_forecast_quality(_forecast_ml_results(mape_pct=MAX_FORECAST_MAPE_PCT))
+    assert result["correct"] is True
+
+
+def test_forecast_quality_not_applicable_when_ml_results_is_none():
+    result = evaluate_forecast_quality(None)
+    assert result["correct"] is None
+
+
+def test_forecast_quality_not_applicable_for_a_churn_result():
+    result = evaluate_forecast_quality(_churn_ml_results())
+    assert result["correct"] is None
+
+
+def test_forecast_quality_not_applicable_when_ml_agent_reported_insufficient_data():
+    """A graceful degradation (app/agents/ml_agent.py's ok=False shape) is
+    NOT itself a quality regression — it must never be scored as a failure
+    here, or a legitimately-insufficient-data case would incorrectly fail
+    the whole benchmark run."""
+    result = evaluate_forecast_quality(
+        {"ok": False, "status": "insufficient_data", "task": "forecasting", "reason": "not enough history"}
+    )
+    assert result["correct"] is None
+
+
+def test_forecast_quality_fails_closed_when_ok_true_but_metrics_missing():
+    """A malformed/fabricated-looking ok=True result (missing the metrics a
+    real evaluate_and_forecast call always produces) must be treated as a
+    genuine failure, not silently skipped as "not applicable" — the two
+    failure modes need to stay distinguishable."""
+    result = evaluate_forecast_quality({"ok": True, "status": "ok", "task": "forecasting", "metrics": {}})
+    assert result["correct"] is False
+
+
+# --- Phase 16: churn quality regression gate ---------------------------------
+
+
+def test_churn_quality_passes_at_the_phase15_observed_baseline():
+    result = evaluate_churn_quality(_churn_ml_results())
+    assert result["correct"] is True
+    assert all(
+        result[k] for k in ("roc_auc_within_threshold", "accuracy_within_threshold", "precision_within_threshold", "recall_within_threshold")
+    )
+
+
+def test_churn_quality_fails_when_roc_auc_is_below_the_threshold_even_with_good_accuracy():
+    """This is the exact scenario the phase's "ROC-AUC is primary, don't
+    rely only on accuracy" instruction is protecting against: a model that
+    LOOKS fine on accuracy but has genuinely poor discriminative power."""
+    result = evaluate_churn_quality(_churn_ml_results(roc_auc=MIN_CHURN_ROC_AUC - 0.1, accuracy=0.95))
+    assert result["correct"] is False
+    assert result["roc_auc_within_threshold"] is False
+    assert result["accuracy_within_threshold"] is True
+
+
+def test_churn_quality_fails_when_recall_collapses_even_with_good_roc_auc():
+    result = evaluate_churn_quality(_churn_ml_results(recall=MIN_CHURN_RECALL - 0.1))
+    assert result["correct"] is False
+    assert result["recall_within_threshold"] is False
+
+
+def test_churn_quality_not_applicable_when_ml_results_is_none():
+    assert evaluate_churn_quality(None)["correct"] is None
+
+
+def test_churn_quality_not_applicable_for_a_forecast_result():
+    assert evaluate_churn_quality(_forecast_ml_results())["correct"] is None
+
+
+def test_churn_quality_not_applicable_when_ml_agent_reported_not_appropriate():
+    result = evaluate_churn_quality({"ok": False, "status": "not_appropriate", "task": None, "reason": "no keyword match"})
+    assert result["correct"] is None
+
+
+def test_churn_quality_fails_closed_when_ok_true_but_metrics_missing():
+    result = evaluate_churn_quality({"ok": True, "status": "ok", "task": "churn_risk", "metrics": {"accuracy": 0.9}})
+    assert result["correct"] is False
+
+
+# --- Phase 16: dispatcher -----------------------------------------------------
+
+
+def test_evaluate_ml_quality_dispatches_forecasting_to_the_forecast_check():
+    result = evaluate_ml_quality(_forecast_ml_results(mape_pct=MAX_FORECAST_MAPE_PCT + 10))
+    assert result["correct"] is False
+    assert "mape_within_threshold" in result
+
+
+def test_evaluate_ml_quality_dispatches_churn_risk_to_the_churn_check():
+    result = evaluate_ml_quality(_churn_ml_results(roc_auc=0.2))
+    assert result["correct"] is False
+    assert "roc_auc_within_threshold" in result
+
+
+def test_evaluate_ml_quality_none_is_not_applicable():
+    assert evaluate_ml_quality(None)["correct"] is None
+
+
+def test_evaluate_ml_quality_unrecognized_task_is_not_applicable_not_a_crash():
+    assert evaluate_ml_quality({"ok": False, "status": "not_appropriate", "task": None})["correct"] is None
+
+
+def test_regression_thresholds_are_stricter_than_a_coin_flip_but_looser_than_todays_baseline():
+    """Documents the actual intent (regression detection, not a quality
+    ceiling) as an executable check: today's Phase 15 baseline clears every
+    threshold with real margin, and every threshold is still meaningfully
+    better than a useless/random model."""
+    assert 0.5 < MIN_CHURN_ROC_AUC < 0.82
+    assert 0.5 < MIN_CHURN_ACCURACY < 0.75
+    assert MIN_CHURN_PRECISION < 0.76
+    assert MIN_CHURN_RECALL < 0.73
+    assert MAX_FORECAST_MAPE_PCT > 11.0
+    assert 0.0 < MAX_FORECAST_MAE_FRACTION_OF_MEAN < 1.0
 
 
 def test_jaccard_and_overall_task_success_unchanged_from_seed():

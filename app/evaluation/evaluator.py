@@ -32,6 +32,7 @@ from app.evaluation.metrics import (
     evaluate_critic_effectiveness,
     evaluate_critic_verdict,
     evaluate_grounding,
+    evaluate_ml_quality,
     evaluate_report_completeness,
     evaluate_sql_correctness,
     evaluate_visualization_correctness,
@@ -118,6 +119,14 @@ def evaluate_case_from_state(case: BenchmarkCase, final_state: AgentState) -> Ca
     viz_eval = evaluate_visualization_correctness(charts, expected_chart_types, ground_truth)
     levels.append(LevelResult(level="visualization", correct=viz_eval["correct"], details=str(viz_eval)))
 
+    # Phase 16: unconditional on final_state's own ml_results, never on the
+    # case's ground_truth — none of the 6 pre-Phase-15 benchmark cases ever
+    # populate ml_results (their questions aren't predictive), so this is
+    # correct=None/fully inert for every one of them; it only activates for
+    # a case whose question actually reached the ML Agent.
+    ml_eval = evaluate_ml_quality(final_state.get("ml_results"))
+    levels.append(LevelResult(level="ml", correct=ml_eval["correct"], details=str(ml_eval)))
+
     grounding_eval = evaluate_grounding(report, analysis_results, sql_queries)
     if grounding_eval["hallucination_detected"]:
         notes.append("Numerical grounding check found unsupported number(s) in the report text.")
@@ -136,6 +145,7 @@ def evaluate_case_from_state(case: BenchmarkCase, final_state: AgentState) -> Ca
         and _ok(analysis_eval["correct"])
         and _ok(answer_eval["correct"])
         and _ok(viz_eval["correct"])
+        and _ok(ml_eval["correct"])
         and grounding_eval["grounded"]
         and _ok(critic_eval["correct"])
     )
@@ -157,6 +167,7 @@ def evaluate_case_from_state(case: BenchmarkCase, final_state: AgentState) -> Ca
         answer_correct=answer_eval["correct"],
         analysis_correct=analysis_eval["correct"],
         visualization_correct=viz_eval["correct"],
+        ml_correct=ml_eval["correct"],
         critic_correct=critic_eval["correct"],
         critic_effectiveness_correct=critic_effectiveness["correct"],
         report_completeness_correct=completeness_eval["correct"],
@@ -234,6 +245,11 @@ def _aggregate_scores(case_results: list[CaseEvaluation]) -> dict[str, float]:
         "answer_correctness": _rate([c.answer_correct for c in scored]),
         "analysis_correctness": _rate([c.analysis_correct for c in scored]),
         "visualization_correctness": _rate([c.visualization_correct for c in scored]),
+        # Phase 16 — None (thus excluded by _rate's own present-only filter,
+        # and by the `deterministic` filter just below) whenever no case in
+        # this run touched the ML Agent at all, e.g. the pre-Phase-16
+        # benchmark set on its own.
+        "ml_correctness": _rate([c.ml_correct for c in scored]),
         "critic_correctness": _rate([c.critic_correct for c in scored]),
         "critic_effectiveness": _rate([c.critic_effectiveness_correct for c in scored]),
         "report_completeness": _rate([c.report_completeness_correct for c in scored]),
@@ -320,6 +336,7 @@ def _write_report(summary: EvaluationRunSummary, reports_dir: str) -> None:
                 "answer_correct": c.answer_correct,
                 "analysis_correct": c.analysis_correct,
                 "visualization_correct": c.visualization_correct,
+                "ml_correct": c.ml_correct,
                 "critic_correct": c.critic_correct,
                 "critic_effectiveness_correct": c.critic_effectiveness_correct,
                 "report_completeness_correct": c.report_completeness_correct,

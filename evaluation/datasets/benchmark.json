@@ -122,5 +122,33 @@
     "expected_limitations": false,
     "expected_behavior": "answerable",
     "acceptance_criteria": {"min_groundedness": 0.85}
+  },
+  {
+    "id": "ml-001",
+    "question": "Forecast revenue for the next period.",
+    "expected_intent": "predictive",
+    "expected_schema": "analytics",
+    "expected_tools": ["sql_agent", "ml_agent"],
+    "expected_tables": ["analytics.orders", "analytics.order_items"],
+    "expected_chart_types": [],
+    "ground_truth": {"type": "ml_forecast_quality"},
+    "expected_key_facts": ["ml_agent_produced_a_forecast"],
+    "expected_limitations": true,
+    "expected_behavior": "answerable",
+    "acceptance_criteria": {"min_groundedness": 0.9}
+  },
+  {
+    "id": "ml-002",
+    "question": "Identify customers at risk of churn.",
+    "expected_intent": "predictive",
+    "expected_schema": "analytics",
+    "expected_tools": ["sql_agent", "ml_agent"],
+    "expected_tables": ["analytics.customers", "analytics.orders"],
+    "expected_chart_types": [],
+    "ground_truth": {"type": "ml_churn_quality"},
+    "expected_key_facts": ["ml_agent_produced_a_churn_risk_model"],
+    "expected_limitations": true,
+    "expected_behavior": "answerable",
+    "acceptance_criteria": {"min_groundedness": 0.9}
   }
 ]

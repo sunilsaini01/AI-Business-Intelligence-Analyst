@@ -22,7 +22,7 @@ class LevelResult:
     failed? Synthesis wrong?). `correct=None` means this level doesn't apply
     to this particular case (e.g. no chart was expected)."""
 
-    level: Literal["sql", "analysis", "visualization", "critic", "end_to_end"]
+    level: Literal["sql", "analysis", "visualization", "ml", "critic", "end_to_end"]
     correct: bool | None
     details: str = ""
 
@@ -43,6 +43,13 @@ class CaseEvaluation:
     critic_correct: bool | None = None
     critic_effectiveness_correct: bool | None = None
     report_completeness_correct: bool | None = None
+    # Phase 16 — None whenever the case's final state has no ml_results at
+    # all (not a predictive question, e.g. all 6 pre-Phase-15 benchmark
+    # cases: see app/evaluation/metrics.py::evaluate_forecast_quality/
+    # evaluate_churn_quality's shared "not applicable" convention with
+    # every other *_correct field above). Set (and part of end_to_end) only
+    # for a case whose question actually reached the ML Agent.
+    ml_correct: bool | None = None
 
     grounded: bool = False
     hallucination_detected: bool = False

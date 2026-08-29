@@ -10,14 +10,32 @@ def test_load_benchmark_reads_seed_case():
 
 
 def test_load_benchmark_has_all_five_phase8_cases():
+    """Subset check, not exact equality: Phase 16 additively grew the file
+    with 2 more (ml-001/ml-002) — this test's actual guarantee ("the
+    Phase 8 cases are still all there, unremoved") holds regardless of
+    what else gets added later. See
+    test_load_benchmark_has_the_phase16_ml_cases for the new ones."""
     cases = load_benchmark("evaluation/datasets/benchmark.json")
     ids = {c["id"] for c in cases}
-    assert ids == {"bi-001", "bi-002", "bi-004", "bi-005", "bi-006"}
+    assert {"bi-001", "bi-002", "bi-004", "bi-005", "bi-006"} <= ids
+
+
+def test_load_benchmark_has_the_phase16_ml_cases():
+    cases = load_benchmark("evaluation/datasets/benchmark.json")
+    ids = {c["id"] for c in cases}
+    assert {"ml-001", "ml-002"} <= ids
 
 
 def test_load_benchmark_every_case_has_a_type_discriminated_ground_truth():
     cases = load_benchmark("evaluation/datasets/benchmark.json")
-    valid_types = {"category_values", "top_category", "period_comparison_with_contribution", "trend_bounds"}
+    valid_types = {
+        "category_values", "top_category", "period_comparison_with_contribution", "trend_bounds",
+        # Phase 16 — app/evaluation/metrics.py::evaluate_ml_quality reads
+        # final_state["ml_results"] directly and doesn't actually consult
+        # ground_truth's contents; these two types exist purely so every
+        # benchmark case keeps the same type-discriminated shape.
+        "ml_forecast_quality", "ml_churn_quality",
+    }
     for case in cases:
         gt = case.get("ground_truth")
         assert gt is not None, f"{case['id']} missing ground_truth"

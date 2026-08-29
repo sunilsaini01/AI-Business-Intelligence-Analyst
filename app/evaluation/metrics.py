@@ -370,6 +370,159 @@ def evaluate_report_completeness(
     return {"correct": all(checks.values()), **checks}
 
 
+# ---------------------------------------------------------------------------
+# ML Agent quality (Phase 16) — a measurable regression contract on top of
+# app/agents/ml_agent.py's real, deterministic output. This gates the ML
+# Agent's OWN measured QUALITY, not whether it decided to run at all
+# (data-sufficiency stays app/tools/ml_tools.py's job, unchanged here) — a
+# future change to feature engineering/splitting/target creation that
+# quietly makes the model worse must fail these checks, not silently pass
+# because "it still produced *a* number". `None` ("not applicable", same
+# convention as report_completeness_correct etc. above) covers both "not a
+# predictive question" and "ML legitimately couldn't run" (insufficient
+# data / not appropriate / a computation error, all `ok=False` — see
+# app/agents/ml_agent.py) — a graceful degradation is not itself a quality
+# regression and must never be scored as one.
+# ---------------------------------------------------------------------------
+
+# Forecast: Phase 15 observed ~11% MAPE on the current ~20-month seeded
+# revenue series with a linear-trend baseline (Sec 2's own "baseline
+# first" judgment call — it is not trying to be a seasonal/causal model).
+# 25% leaves headroom for ordinary month-to-month noise while still
+# catching a genuine regression (e.g. a broken time-alignment or an
+# accidentally-shuffled split would push error far higher, not by a few
+# points). MAE has no dataset-independent dollar ceiling that would
+# survive the seed data ever being regenerated at a different revenue
+# scale, so it's compared as a FRACTION of the held-out period's own mean
+# actual value instead of a hard-coded number.
+MAX_FORECAST_MAPE_PCT = 25.0
+MAX_FORECAST_MAE_FRACTION_OF_MEAN = 0.20
+
+# Churn: Phase 15 observed ROC-AUC ~0.82, accuracy ~75%, precision ~76%,
+# recall ~73% (stratified split, 180-day window, ~500 seeded customers).
+# ROC-AUC is treated as the PRIMARY signal per this phase's explicit
+# instruction (accuracy alone is misleading under any class imbalance);
+# 0.65 is meaningfully above the 0.5 "coin flip" floor while leaving room
+# for legitimate split-to-split variance. The accuracy/precision/recall
+# floors are deliberately well below the observed values — they exist to
+# catch a genuinely broken model (e.g. a feature/label swap collapsing
+# one class), not to lock in today's exact numbers.
+MIN_CHURN_ROC_AUC = 0.65
+MIN_CHURN_ACCURACY = 0.60
+MIN_CHURN_PRECISION = 0.55
+MIN_CHURN_RECALL = 0.55
+
+
+def evaluate_forecast_quality(ml_results: dict[str, Any] | None) -> dict[str, Any]:
+    """Regression gate for a `task == "forecasting"` ml_results. Never
+    trusts a metric it can't find — a `ok=True` result missing `mape_pct`/
+    `mae` is treated as `correct=False` (malformed/fabricated output), not
+    silently skipped, since that shape should never occur from a real
+    app/tools/ml_tools.py::evaluate_and_forecast call.
+    """
+    if not ml_results:
+        return {"correct": None, "reason": "No ML result to evaluate (not a predictive question)."}
+    if ml_results.get("task") != "forecasting":
+        return {"correct": None, "reason": "Not a forecasting result."}
+    if not ml_results.get("ok"):
+        return {
+            "correct": None,
+            "reason": f"Forecast did not run (status={ml_results.get('status')}): {ml_results.get('reason')}",
+        }
+
+    metrics = ml_results.get("metrics") or {}
+    mape = metrics.get("mape_pct")
+    mae = metrics.get("mae")
+    if mape is None or mae is None:
+        return {
+            "correct": False,
+            "reason": "ok=True forecast result is missing mape_pct/mae — malformed or fabricated output.",
+        }
+
+    sample_predictions = ml_results.get("sample_predictions") or []
+    actual_values = [p["actual"] for p in sample_predictions if isinstance(p.get("actual"), (int, float))]
+    mean_actual = (sum(actual_values) / len(actual_values)) if actual_values else None
+    mae_fraction = (mae / mean_actual) if mean_actual else None
+
+    mape_ok = mape <= MAX_FORECAST_MAPE_PCT
+    mae_ok = mae_fraction is None or mae_fraction <= MAX_FORECAST_MAE_FRACTION_OF_MEAN
+
+    return {
+        "correct": bool(mape_ok and mae_ok),
+        "mape_pct": mape,
+        "mae": mae,
+        "mae_fraction_of_mean": mae_fraction,
+        "mape_within_threshold": mape_ok,
+        "mae_within_threshold": mae_ok,
+        "threshold_mape_pct": MAX_FORECAST_MAPE_PCT,
+        "threshold_mae_fraction": MAX_FORECAST_MAE_FRACTION_OF_MEAN,
+    }
+
+
+def evaluate_churn_quality(ml_results: dict[str, Any] | None) -> dict[str, Any]:
+    """Regression gate for a `task == "churn_risk"` ml_results. All four
+    metrics must clear their floor — ROC-AUC is the metric that would
+    actually reveal degraded quality on an imbalanced label (the reason
+    accuracy alone isn't trusted), but a genuinely broken model can also
+    show up as a precision/recall collapse with ROC-AUC still looking
+    passable, so none of the four is skipped.
+    """
+    if not ml_results:
+        return {"correct": None, "reason": "No ML result to evaluate (not a predictive question)."}
+    if ml_results.get("task") != "churn_risk":
+        return {"correct": None, "reason": "Not a churn_risk result."}
+    if not ml_results.get("ok"):
+        return {
+            "correct": None,
+            "reason": f"Churn model did not run (status={ml_results.get('status')}): {ml_results.get('reason')}",
+        }
+
+    metrics = ml_results.get("metrics") or {}
+    roc_auc, accuracy = metrics.get("roc_auc"), metrics.get("accuracy")
+    precision, recall = metrics.get("precision"), metrics.get("recall")
+    if None in (roc_auc, accuracy, precision, recall):
+        return {
+            "correct": False,
+            "reason": "ok=True churn result is missing one or more required metrics — malformed or fabricated output.",
+        }
+
+    checks = {
+        "roc_auc_within_threshold": roc_auc >= MIN_CHURN_ROC_AUC,
+        "accuracy_within_threshold": accuracy >= MIN_CHURN_ACCURACY,
+        "precision_within_threshold": precision >= MIN_CHURN_PRECISION,
+        "recall_within_threshold": recall >= MIN_CHURN_RECALL,
+    }
+    return {
+        "correct": all(checks.values()),
+        "roc_auc": roc_auc,
+        "accuracy": accuracy,
+        "precision": precision,
+        "recall": recall,
+        "threshold_roc_auc": MIN_CHURN_ROC_AUC,
+        "threshold_accuracy": MIN_CHURN_ACCURACY,
+        "threshold_precision": MIN_CHURN_PRECISION,
+        "threshold_recall": MIN_CHURN_RECALL,
+        **checks,
+    }
+
+
+def evaluate_ml_quality(ml_results: dict[str, Any] | None) -> dict[str, Any]:
+    """Dispatches on ml_results["task"] — the single entry point
+    app/evaluation/evaluator.py::evaluate_case_from_state calls, mirroring
+    how the SQL/analysis/visualization levels each have one clear owner
+    function."""
+    if not ml_results:
+        return {"correct": None, "reason": "No ML result to evaluate (not a predictive question)."}
+    task = ml_results.get("task")
+    if task == "forecasting":
+        return evaluate_forecast_quality(ml_results)
+    if task == "churn_risk":
+        return evaluate_churn_quality(ml_results)
+    # task is None (not_appropriate) or something unrecognized — never a
+    # quality failure, there's simply nothing to grade.
+    return {"correct": None, "reason": f"No applicable ML quality check for task={task!r}."}
+
+
 def evaluate_critic_verdict(critic_feedback: dict[str, Any] | None, expected_valid: bool) -> dict[str, Any]:
     """Did the Critic's actual verdict match what a report of this quality
     should get: PASS/WARN for a genuinely good report, FAIL for a

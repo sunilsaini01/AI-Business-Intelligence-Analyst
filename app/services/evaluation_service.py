@@ -31,6 +31,7 @@ def _case_scores(case: CaseEvaluation) -> dict:
         "answer_correct": case.answer_correct,
         "analysis_correct": case.analysis_correct,
         "visualization_correct": case.visualization_correct,
+        "ml_correct": case.ml_correct,
         "critic_correct": case.critic_correct,
         "critic_effectiveness_correct": case.critic_effectiveness_correct,
         "report_completeness_correct": case.report_completeness_correct,
