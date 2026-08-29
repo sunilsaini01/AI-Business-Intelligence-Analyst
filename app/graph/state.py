@@ -110,6 +110,12 @@ class BusinessReport(TypedDict):
 
     verified_claims: list[str]
     analysis_explanation: str
+    # Phase 15, Objective 4 — deterministic rendering of state["ml_results"]
+    # (app/agents/ml_agent.py::_format_ml_summary), same "presentation
+    # only, never re-derives" ownership as analysis_explanation. "" when
+    # ml_results is None (not a predictive question) or before
+    # report_agent_node has run.
+    ml_summary: str
     visualizations: list[dict[str, Any]]
     technical_details: dict[str, Any]
     narrative: str | None

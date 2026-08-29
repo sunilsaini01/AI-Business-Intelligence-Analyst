@@ -1,14 +1,21 @@
 """StateGraph wiring (Sec 1; user Phase 4/5/6/7/9/10 spec).
 
-Default graph as of Phase 10:
+Default graph as of Phase 15:
 
-    supervisor (plan) -> sql_agent -> analysis_agent -> visualization_agent
-        -> supervisor (synthesize) -> critic
+    supervisor (plan) -> sql_agent -> analysis_agent -> ml_agent
+        -> visualization_agent -> supervisor (synthesize) -> critic
             -> PASS/WARN, or FAIL at max_retries -> report_agent -> END
             -> FAIL with retries left -> supervisor (revise) -> critic -> ...
     supervisor (out_of_scope) -> END directly (skips critic AND report_agent
         — a fixed "I can't answer that" message never touches analysis/
         evidence, so there's nothing to review or finalize)
+
+ml_agent (app/agents/ml_agent.py, Phase 15 Objective 4) is always in the
+chain, same as analysis_agent/visualization_agent — it decides internally
+whether `state["intent"] == "predictive"` before doing any real work
+(fitting a model, running its own fixed/reviewed queries through the same
+safety pipeline as sql_agent), so a non-predictive question pays only the
+cost of one fast no-op node, not a conditional graph edge.
 
 Three-way fork after the Supervisor (`_route_after_supervisor`): `report is
 None` -> still gathering evidence, go to sql_agent. `report is not None` and
@@ -42,6 +49,7 @@ from langgraph.graph import END, StateGraph
 
 from app.agents.analysis_agent import analysis_agent_node
 from app.agents.critic import critic_node
+from app.agents.ml_agent import ml_agent_node
 from app.agents.report_agent import report_agent_node
 from app.agents.sql_agent import sql_agent_node
 from app.agents.supervisor import supervisor_node
@@ -88,6 +96,7 @@ def build_graph(llm: LLMClientProtocol | None = None):
     graph.add_node("supervisor", supervisor)
     graph.add_node("sql_agent", sql_agent)
     graph.add_node("analysis_agent", analysis_agent_node)
+    graph.add_node("ml_agent", ml_agent_node)
     graph.add_node("visualization_agent", visualization_agent_node)
     graph.add_node("critic", critic)
     graph.add_node("report_agent", report_agent)
@@ -97,7 +106,18 @@ def build_graph(llm: LLMClientProtocol | None = None):
         "supervisor", _route_after_supervisor, {"sql_agent": "sql_agent", "critic": "critic", "end": END}
     )
     graph.add_edge("sql_agent", "analysis_agent")
-    graph.add_edge("analysis_agent", "visualization_agent")
+    # Phase 15, Objective 4: ml_agent sits between analysis_agent and
+    # visualization_agent — after the deterministic analysis it may build
+    # features from, before the chart selection that (like ml_agent
+    # itself) never runs LLM-invented logic. Always in the linear chain,
+    # same pattern as analysis_agent/visualization_agent: it decides
+    # internally whether it has anything to do (state["intent"] ==
+    # "predictive") rather than the graph routing around it — a no-op
+    # here is just as fast as a conditional edge would be, and this keeps
+    # the graph topology unchanged everywhere else (retry loop, out_of_
+    # scope short-circuit, Critic authority all untouched).
+    graph.add_edge("analysis_agent", "ml_agent")
+    graph.add_edge("ml_agent", "visualization_agent")
     graph.add_edge("visualization_agent", "supervisor")
     graph.add_conditional_edges(
         "critic", _route_after_critic, {"supervisor": "supervisor", "report_agent": "report_agent"}
