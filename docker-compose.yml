@@ -36,6 +36,12 @@ services:
       - ./tests:/app/tests
       - ./evaluation:/app/evaluation
       - ./pyproject.toml:/app/pyproject.toml
+      # Phase 15, Objective 1: mounted read-only so tests/security/
+      # test_secret_exposure.py can verify the actual, live-edited files
+      # (not a stale copy baked into the image at build time) — neither is
+      # ever written to by the app itself.
+      - ./.gitignore:/app/.gitignore:ro
+      - ./.env.example:/app/.env.example:ro
       # Phase 12: mounted read-only so tests/frontend/ can pytest-import the
       # pure frontend modules (api_client.py, polling.py, progress.py,
       # report_view.py, chart_builder.py, health.py — none of which import

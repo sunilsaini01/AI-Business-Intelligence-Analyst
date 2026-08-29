@@ -1,0 +1,142 @@
+# Render Blueprint — see docs/deployment.md for the full deployment guide,
+# including the two manual steps Render's declarative config cannot express
+# (marked `sync: false` below) and the free-tier alternative to
+# `preDeployCommand`. This file does not invent any new configuration
+# surface: every env var name below is one app/core/config.py already reads.
+#
+# Architecture (Section 7 of the final deployment phase):
+#
+#   Render
+#   ├── PostgreSQL (aibia-postgres)        — one instance, app schema (r/w)
+#   │                                          + analytics schema (readonly_analyst)
+#   ├── aibia-api      (Docker web service) — FastAPI + LangGraph + agents
+#   └── aibia-frontend (Docker web service) — Streamlit, talks to aibia-api
+#                                              over HTTPS via API_BASE_URL
+#
+# Two services, one database — no Redis, no Kafka, no Kubernetes, no
+# separate microservices, per this project's explicit scope.
+
+databases:
+  - name: aibia-postgres
+    databaseName: bi_agent
+    user: bi_app
+    plan: free # Render's free Postgres expires after a fixed retention window — fine for a portfolio demo, not for real production data. Upgrade the plan for anything longer-lived.
+
+services:
+  # ------------------------------------------------------------------
+  # Backend — FastAPI + LangGraph agent graph
+  # ------------------------------------------------------------------
+  - type: web
+    name: aibia-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: free
+    healthCheckPath: /api/v1/health/ready
+    # Runs `alembic upgrade head` before the new instance takes traffic.
+    # NOTE: preDeployCommand requires a paid instance type — Render's free
+    # web services do not support it. On the free tier, run migrations
+    # manually once via the Render Shell after the first deploy (see
+    # docs/deployment.md); a from-scratch `bi_agent` database has no
+    # tables until this runs.
+    preDeployCommand: python -m alembic upgrade head
+    envVars:
+      # --- Database (Section 10/11) ---
+      # Both of these MUST be set manually after aibia-postgres is
+      # provisioned — Render's `fromDatabase` only exposes a plain
+      # `postgresql://` connection string, and this app needs two
+      # DIFFERENT derived forms of it (see docs/deployment.md "Database
+      # URLs" for the exact two-minute copy/edit steps):
+      #   DATABASE_URL           = the Postgres "Internal Connection
+      #                             String" with its scheme changed from
+      #                             postgresql:// to postgresql+asyncpg://
+      #                             (SQLAlchemy's async driver requires
+      #                             this exact scheme)
+      #   ANALYTICS_DATABASE_URL = the SAME host/port/database, but with
+      #                             user=readonly_analyst and
+      #                             password=<READONLY_DB_PASSWORD below>
+      #                             — scheme stays plain postgresql://
+      #                             (asyncpg's own driver, no SQLAlchemy
+      #                             involved on this path). The
+      #                             readonly_analyst role itself is
+      #                             created by migration 0001 the first
+      #                             time it runs against DATABASE_URL —
+      #                             it does not exist until then.
+      - key: DATABASE_URL
+        sync: false
+      - key: ANALYTICS_DATABASE_URL
+        sync: false
+      - key: READONLY_DB_USER
+        value: readonly_analyst
+      - key: READONLY_DB_PASSWORD
+        generateValue: true
+      - key: SQL_ROW_LIMIT_DEFAULT
+        value: "5000"
+      - key: SQL_STATEMENT_TIMEOUT_MS
+        value: "8000"
+
+      # --- LLM provider (pick one; Groq's free daily quota is the
+      # project's documented default — see README's Groq quota note) ---
+      - key: LLM_PROVIDER
+        value: groq
+      - key: GROQ_API_KEY
+        sync: false # required if LLM_PROVIDER=groq — free key at console.groq.com. Rotate before any public demo if this key was ever exposed (see docs/security.md).
+      - key: GROQ_MODEL_FAST
+        value: openai/gpt-oss-20b
+      - key: GROQ_MODEL_STRONG
+        value: openai/gpt-oss-120b
+      - key: ANTHROPIC_API_KEY
+        sync: false # required only if LLM_PROVIDER=anthropic. Rotate before any public demo if this key was ever exposed (see docs/security.md).
+      - key: LLM_MODEL_FAST
+        value: claude-haiku-4-5-20251001
+      - key: LLM_MODEL_STRONG
+        value: claude-sonnet-5
+      - key: LLM_MAX_RETRIES
+        value: "2"
+      - key: CRITIC_MAX_RETRIES
+        value: "2"
+      - key: REPORT_NARRATIVE_ENABLED
+        value: "false"
+
+      # --- Auth (Section 4) ---
+      - key: SECRET_KEY
+        generateValue: true
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "1440"
+      - key: SECRET_KEY_ID
+        value: default
+      - key: PREVIOUS_SECRET_KEY
+        value: "" # only set during a rotation window — see docs/security.md
+      - key: PREVIOUS_SECRET_KEY_ID
+        value: ""
+      - key: LOGIN_RATE_LIMIT_ENABLED
+        value: "true"
+      - key: LOGIN_RATE_LIMIT_MAX_ATTEMPTS
+        value: "5"
+      - key: LOGIN_RATE_LIMIT_WINDOW_SECONDS
+        value: "300" # in-memory/per-instance — see README's Known Limitations (no Redis added for this)
+
+      # --- CORS (Section 12) — the deployed frontend's own URL, not "*" ---
+      - key: FRONTEND_ORIGIN
+        value: https://aibia-frontend.onrender.com # update if Render assigns a different name/URL for the frontend service
+
+      - key: ENVIRONMENT
+        value: production
+      - key: LOG_LEVEL
+        value: INFO
+
+  # ------------------------------------------------------------------
+  # Frontend — Streamlit
+  # ------------------------------------------------------------------
+  - type: web
+    name: aibia-frontend
+    runtime: docker
+    dockerfilePath: ./frontend/Dockerfile
+    dockerContext: ./frontend
+    plan: free
+    healthCheckPath: /_stcore/health # Streamlit's own built-in health endpoint
+    envVars:
+      - key: API_BASE_URL
+        value: https://aibia-api.onrender.com # update if Render assigns a different name/URL for the backend service
