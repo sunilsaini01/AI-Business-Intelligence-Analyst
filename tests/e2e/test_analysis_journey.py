@@ -39,20 +39,27 @@ fixtures (a real `RuntimeError: Cannot run the event loop while another
 loop is running` otherwise) — E2E tests don't need that fixture at all
 (they never import app.db directly), so cutting conftest inheritance at
 tests/e2e/ is the correct fix, not a workaround.
+
+Phase 14: POST /analyze (and every /analysis/* endpoint) now requires
+auth, so every journey below logs in first — see `_register_and_log_in`
+and the `authenticated_page` fixture. `analysis_page` (no login) is kept
+for the one test that specifically checks the login gate itself.
 """
 
 from __future__ import annotations
 
 import os
+import uuid
 
 import httpx
 import pytest
-from playwright.sync_api import Page, expect
+from playwright.sync_api import BrowserContext, Page, expect
 
 FRONTEND_BASE_URL = os.environ.get("FRONTEND_BASE_URL", "http://localhost:8511")
 API_BASE_URL = os.environ.get("API_BASE_URL", "http://localhost:8010")
 
 _QUESTION = "How many customers do we have per region?"
+_PASSWORD = "correct-horse-battery-staple"
 
 
 def _stack_is_reachable() -> bool:
@@ -69,33 +76,108 @@ pytestmark = pytest.mark.skipif(
 )
 
 
+def _register_and_log_in(page: Page, email: str) -> None:
+    """Drives the REAL login gate (frontend/app.py::_render_login_gate) —
+    register on one tab, log in on the other, wait for the main UI. Each
+    call uses a fresh, unique email so tests never collide on the
+    register endpoint's uniqueness constraint or on session isolation."""
+    page.goto(FRONTEND_BASE_URL)
+    expect(page.get_by_text("AI Business Intelligence Analyst")).to_be_visible(timeout=15_000)
+
+    page.get_by_role("tab", name="Register").click()
+    register_panel = page.get_by_role("tabpanel").filter(has=page.get_by_role("button", name="Register"))
+    register_panel.get_by_role("textbox", name="Email").fill(email)
+    register_panel.get_by_role("textbox", name="Email").press("Tab")
+    register_panel.get_by_role("textbox", name="Password").fill(_PASSWORD)
+    register_panel.get_by_role("textbox", name="Password").press("Tab")
+    register_button = register_panel.get_by_role("button", name="Register")
+    expect(register_button).to_be_enabled(timeout=15_000)
+    register_button.click()
+    expect(page.get_by_text("Account created")).to_be_visible(timeout=15_000)
+
+    _log_in(page, email)
+
+
+def _log_in(page: Page, email: str) -> None:
+    """Just the login half — used both by _register_and_log_in (a fresh
+    account) and directly by tests that need to log back IN as an
+    already-registered user (e.g. after a browser refresh, which — like
+    any Streamlit session_state — always discards access_token along with
+    everything else; only analysis_id survives a refresh, via
+    st.query_params, and only because app.py deliberately puts it there).
+    Assumes the login gate (or the "Log in" tab of it) is already on
+    screen."""
+    if page.get_by_role("tab", name="Log in").is_visible():
+        page.get_by_role("tab", name="Log in").click()
+    login_panel = page.get_by_role("tabpanel").filter(has=page.get_by_role("button", name="Log in"))
+    login_panel.get_by_role("textbox", name="Email").fill(email)
+    login_panel.get_by_role("textbox", name="Email").press("Tab")
+    login_panel.get_by_role("textbox", name="Password").fill(_PASSWORD)
+    login_panel.get_by_role("textbox", name="Password").press("Tab")
+    login_button = login_panel.get_by_role("button", name="Log in")
+    expect(login_button).to_be_enabled(timeout=15_000)
+    login_button.click()
+
+    expect(page.get_by_role("heading", name="Business Question")).to_be_visible(timeout=15_000)
+    expect(page.get_by_text(f"Logged in as {email}")).to_be_visible(timeout=15_000)
+
+
 @pytest.fixture
 def analysis_page(page: Page) -> Page:
     page.goto(FRONTEND_BASE_URL)
     return page
 
 
-def test_full_analysis_journey_via_the_real_browser(analysis_page: Page) -> None:
+@pytest.fixture
+def authenticated_page(page: Page) -> Page:
+    """A fresh, uniquely-registered, logged-in user, ready at the main
+    "Business Question" screen — every journey that exercises an actual
+    analysis needs this now that POST /analyze requires auth."""
+    _register_and_log_in(page, f"e2e-{uuid.uuid4()}@example.com")
+    return page
+
+
+@pytest.fixture
+def authenticated_page_with_email(page: Page) -> tuple[Page, str]:
+    """Same as authenticated_page, but also hands back the email — for the
+    one journey that needs to log back IN later (after a refresh, which
+    discards session_state including access_token)."""
+    email = f"e2e-{uuid.uuid4()}@example.com"
+    _register_and_log_in(page, email)
+    return page, email
+
+
+def _ask_and_wait_for_report(page: Page, question: str) -> None:
+    question_box = page.get_by_placeholder("e.g. What happened to revenue last month?")
+    question_box.fill(question)
+    question_box.press("Tab")
+    analyze_button = page.get_by_role("button", name="Analyze")
+    expect(analyze_button).to_be_enabled(timeout=15_000)
+    analyze_button.click()
+    expect(page.get_by_text("Final Report")).to_be_visible(timeout=60_000)
+
+
+def test_login_gate_is_shown_before_any_account_exists(analysis_page: Page) -> None:
+    """1/2/3. The unauthenticated entry point — proves the auth boundary is
+    real at the UI layer too, not just the API (see
+    tests/security/test_authorization.py for the API-layer proof)."""
     page = analysis_page
-
-    # 4. Page loads.
     expect(page.get_by_text("AI Business Intelligence Analyst")).to_be_visible(timeout=15_000)
+    expect(page.get_by_role("heading", name="Log in")).to_be_visible()
+    expect(page.get_by_placeholder("e.g. What happened to revenue last month?")).not_to_be_visible()
 
-    # 5. Enter a valid business question. Streamlit's text_input only syncs
-    # its value to the Python session (and reruns, enabling the button) on
-    # blur/Enter — `.fill()` alone sets the DOM value without firing that,
-    # so a real user's next action (pressing Tab/clicking elsewhere) has to
-    # be simulated explicitly, not skipped.
+
+def test_full_analysis_journey_via_the_real_browser(authenticated_page: Page) -> None:
+    page = authenticated_page
+
+    # 7/8. Analysis starts; progress UI appears.
     question_box = page.get_by_placeholder("e.g. What happened to revenue last month?")
     question_box.fill(_QUESTION)
     question_box.press("Tab")
-
-    # 6. Click Analyze.
     analyze_button = page.get_by_role("button", name="Analyze")
     expect(analyze_button).to_be_enabled(timeout=15_000)
     analyze_button.click()
 
-    # 7/8. Analysis starts; progress UI appears.
     expect(page.get_by_text("Analysis Progress")).to_be_visible(timeout=15_000)
     expect(page.get_by_text("Status:", exact=False)).to_be_visible()
 
@@ -131,7 +213,7 @@ def test_full_analysis_journey_via_the_real_browser(analysis_page: Page) -> None
     expect(page.get_by_text("Customer counts differ across regions", exact=False)).to_be_visible()
 
 
-def test_out_of_scope_question_shows_a_clear_low_confidence_result(analysis_page: Page) -> None:
+def test_out_of_scope_question_shows_a_clear_low_confidence_result(authenticated_page: Page) -> None:
     """15. "Backend errors surfaced clearly" — the fake provider's
     unrecognized-question path exercises a real, complete, low-confidence
     decline result end to end (app/agents/supervisor.py::
@@ -141,8 +223,7 @@ def test_out_of_scope_question_shows_a_clear_low_confidence_result(analysis_page
     covered at the API/service layer (tests/api/test_reliability.py),
     which doesn't need a browser to verify.
     """
-    page = analysis_page
-    expect(page.get_by_text("AI Business Intelligence Analyst")).to_be_visible(timeout=15_000)
+    page = authenticated_page
 
     question_box = page.get_by_placeholder("e.g. What happened to revenue last month?")
     question_box.fill("What's the weather like today?")
@@ -154,3 +235,71 @@ def test_out_of_scope_question_shows_a_clear_low_confidence_result(analysis_page
     expect(page.get_by_text("Final Report")).to_be_visible(timeout=60_000)
     expect(page.get_by_text("I can't answer that from this dataset.")).to_be_visible()
     expect(page.get_by_text("Low")).to_be_visible()
+
+
+def test_browser_refresh_after_starting_an_analysis_still_reaches_the_report(
+    authenticated_page_with_email: tuple[Page, str],
+) -> None:
+    """Phase 14: analysis_id is persisted to st.query_params
+    (_reset_for_new_analysis) specifically so a mid-analysis refresh
+    resumes polling instead of losing all progress — this is the direct
+    regression guard for that fix. Reloads immediately after clicking
+    Analyze (racing the fake provider's own few-seconds completion, not
+    waiting for a specific mid-flight window) and asserts the report is
+    still reachable afterward either way.
+
+    A refresh discards ALL of st.session_state (Streamlit sessions are
+    tied to the WebSocket connection, not to the URL) — including
+    access_token, not just analysis_id. Only analysis_id survives, and
+    only because it's deliberately mirrored into st.query_params; the user
+    genuinely does have to log back in, which is the correct, security-
+    appropriate behavior (a URL alone must never be enough to resume
+    someone else's session) — this test logs back in with the SAME
+    account and asserts the ANALYSIS itself, not the login, resumes
+    correctly from there.
+    """
+    page, email = authenticated_page_with_email
+
+    question_box = page.get_by_placeholder("e.g. What happened to revenue last month?")
+    question_box.fill(_QUESTION)
+    question_box.press("Tab")
+    analyze_button = page.get_by_role("button", name="Analyze")
+    expect(analyze_button).to_be_enabled(timeout=15_000)
+    analyze_button.click()
+    expect(page.get_by_text("Analysis Progress")).to_be_visible(timeout=15_000)
+
+    assert "analysis_id=" in page.url  # the resumption mechanism itself: it's really in the URL
+    page.reload()
+
+    expect(page.get_by_role("heading", name="Log in")).to_be_visible(timeout=15_000)
+    _log_in(page, email)
+
+    expect(page.get_by_text("Final Report")).to_be_visible(timeout=60_000)
+    expect(page.get_by_text("Customer counts differ across regions", exact=False)).to_be_visible()
+
+
+def test_two_independent_logged_in_sessions_never_see_each_others_report(browser: BrowserContext) -> None:
+    """Issue 9/Issue 8 combined: two different browser contexts, two
+    different registered users, run different questions concurrently-ish
+    (both started before either is awaited to completion) — each must only
+    ever see its own report, proving the Phase 14 ownership boundary holds
+    through the real UI, not just via direct API calls (see
+    tests/security/test_authorization.py for that layer)."""
+    context_a = browser.new_context()
+    context_b = browser.new_context()
+    try:
+        page_a, page_b = context_a.new_page(), context_b.new_page()
+        _register_and_log_in(page_a, f"e2e-a-{uuid.uuid4()}@example.com")
+        _register_and_log_in(page_b, f"e2e-b-{uuid.uuid4()}@example.com")
+
+        _ask_and_wait_for_report(page_a, _QUESTION)
+        _ask_and_wait_for_report(page_b, "What's the weather like today?")
+
+        expect(page_a.get_by_text("Customer counts differ across regions", exact=False)).to_be_visible()
+        expect(page_a.get_by_text("I can't answer that from this dataset.")).not_to_be_visible()
+
+        expect(page_b.get_by_text("I can't answer that from this dataset.")).to_be_visible()
+        expect(page_b.get_by_text("Customer counts differ across regions", exact=False)).not_to_be_visible()
+    finally:
+        context_a.close()
+        context_b.close()

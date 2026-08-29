@@ -56,6 +56,13 @@ def build_report_sections(report: dict[str, Any]) -> list[ReportSection]:
     if analysis_explanation:
         sections.append(ReportSection("Analysis", "text", analysis_explanation))
 
+    # Phase 15, Objective 4 — omitted whenever ml_summary is empty (the
+    # question wasn't predictive, or this report predates the field), same
+    # "nothing to show -> nothing rendered" rule as every other section.
+    ml_summary = report.get("ml_summary")
+    if ml_summary:
+        sections.append(ReportSection("Predictive Analysis", "text", ml_summary))
+
     # Confidence is always shown, verbatim, exactly as the Critic/Report
     # Generator left it — never upgraded, downgraded, or reworded here.
     sections.append(ReportSection("Confidence", "text", report.get("confidence") or ""))

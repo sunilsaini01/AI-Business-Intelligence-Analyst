@@ -53,6 +53,21 @@ class RateLimitedError(ApiError):
     rate-limit issue") — see classify_error_message below for that path."""
 
 
+class AuthenticationError(ApiError):
+    """401 — no token, or the token is missing/expired/invalid (Phase 14).
+    Also what a wrong email/password on POST /auth/login surfaces as.
+    app.py treats this as "go back to the login screen", distinct from
+    every other error."""
+
+
+class ForbiddenError(ApiError):
+    """403 — a real, distinct token for a different, authenticated user
+    (Phase 14's ownership check) — never reachable through normal use of
+    this frontend (it only ever asks for the caller's own analysis_id), but
+    typed separately from AuthenticationError since the fix is different:
+    this is not a login problem."""
+
+
 class ServerError(ApiError):
     """5xx — the backend itself hit an internal error."""
 
@@ -84,6 +99,10 @@ def _raise_for_status(resp: httpx.Response) -> None:
         return
     if resp.status_code in (400, 422):
         raise InvalidRequestError(_safe_detail(resp, "The request was invalid."), status_code=resp.status_code)
+    if resp.status_code == 401:
+        raise AuthenticationError(_safe_detail(resp, "Please log in again."), status_code=401)
+    if resp.status_code == 403:
+        raise ForbiddenError(_safe_detail(resp, "You are not authorized to access this analysis."), status_code=403)
     if resp.status_code == 404:
         raise NotFoundError(_safe_detail(resp, "Analysis not found."), status_code=404)
     if resp.status_code == 409:
@@ -112,9 +131,16 @@ class AnalysisApiClient:
         base_url: str | None = None,
         timeout: float = DEFAULT_TIMEOUT_SECONDS,
         client: httpx.Client | None = None,
+        token: str | None = None,
     ) -> None:
+        """`token=None` (register/login themselves, and any caller that
+        hasn't authenticated yet) sends no Authorization header at all —
+        every protected endpoint then correctly responds 401, handled the
+        same as any other ApiError. Every other call site in app.py passes
+        the token currently held in st.session_state."""
         self._owns_client = client is None
-        self._client = client or httpx.Client(base_url=base_url or default_base_url(), timeout=timeout)
+        headers = {"Authorization": f"Bearer {token}"} if token else {}
+        self._client = client or httpx.Client(base_url=base_url or default_base_url(), timeout=timeout, headers=headers)
 
     def close(self) -> None:
         if self._owns_client:
@@ -139,6 +165,12 @@ class AnalysisApiClient:
             ) from exc
         _raise_for_status(resp)
         return resp.json()
+
+    def register(self, email: str, password: str) -> dict[str, Any]:
+        return self._request("POST", "/api/v1/auth/register", json={"email": email, "password": password})
+
+    def login(self, email: str, password: str) -> dict[str, Any]:
+        return self._request("POST", "/api/v1/auth/login", json={"email": email, "password": password})
 
     def analyze(self, question: str) -> dict[str, Any]:
         return self._request("POST", "/api/v1/analyze", json={"question": question})
