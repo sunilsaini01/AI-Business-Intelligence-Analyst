@@ -297,6 +297,21 @@ python scripts/seed_database.py
 uvicorn app.main:app --reload
 ```
 
+To also run the frontend natively (outside Docker), in a second terminal:
+
+```bash
+cd frontend
+pip install -r requirements.txt
+streamlit run app.py --server.port 8502
+```
+
+Pass `--server.port 8502` (or any free port) explicitly — 8501 is
+Streamlit's default and a common default other local projects use too, so
+if one is already running on your machine, opening plain
+`http://localhost:8501` will silently show *their* app instead of this
+one. Docker Compose is unaffected (it already maps this frontend to host
+port 8511 for the same reason).
+
 ## Deployment (Render)
 
 ```mermaid

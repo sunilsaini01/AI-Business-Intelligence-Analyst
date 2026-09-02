@@ -37,10 +37,11 @@ services:
     healthCheckPath: /api/v1/health/ready
     # Migrations are NOT run automatically: preDeployCommand is rejected
     # by Render's Blueprint validator for free-tier services (a hard
-    # error, not a no-op) — so this must stay unset while aibia-api is on
-    # plan: free. Run migrations manually once via the Render Shell after
-    # the first deploy (see docs/deployment.md); a from-scratch `bi_agent`
-    # database has no tables until this runs:
+    # error, not a no-op), and the Shell tab also requires a paid plan —
+    # so this must stay unset while aibia-api is on plan: free. Run
+    # migrations manually, once, from your own machine against the
+    # database's External URL (see docs/deployment.md); a from-scratch
+    # `bi_agent` database has no tables until this runs:
     #   python -m alembic upgrade head
     envVars:
       # --- Database (Section 10/11) ---

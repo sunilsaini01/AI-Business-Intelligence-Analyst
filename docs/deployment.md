@@ -65,12 +65,29 @@ deployment bug.
 `render.yaml` deliberately does **not** set `preDeployCommand` — Render's
 Blueprint validator rejects it outright (a hard error at Blueprint-creation
 time, not just a no-op) for any service on the free plan, which is what
-`aibia-api` uses here. Run migrations manually once per deploy via the
-Render Shell tab on the `aibia-api` service instead:
+`aibia-api` uses here.
 
+**Render's Shell tab also requires a paid (Starter+) instance type** — it's
+not available on the free compute plan either, so "run it via Render
+Shell" (an earlier version of this doc's advice) doesn't work on free
+tier. Run migrations from your own machine instead, against the
+database's **External** Database URL (not Internal — that one only
+resolves from inside Render's private network) using the project's own
+Docker container, which already has every dependency installed:
+
+```bash
+docker compose exec -e DATABASE_URL="postgresql+asyncpg://bi_app:<password>@<external-hostname>/<database>" \
+  api python -m alembic upgrade head
 ```
-python -m alembic upgrade head
-```
+
+Build that `DATABASE_URL` the same way as the "Database URLs" section
+above — copy the Postgres service's **External Database URL**, change its
+scheme to `postgresql+asyncpg://`, and if the password contains any of
+`@ : / % # ?`, percent-encode just those characters (`@`→`%40` etc.) —
+or avoid the whole problem by generating a plain alphanumeric password in
+the first place (`python -c "import secrets; print(secrets.token_hex(16))"`
+produces one that never needs encoding). Run this from the repo root,
+where `docker-compose.yml` lives.
 
 The chain is `0001_initial -> 0002_olist_schema -> 0003_report_extras ->
 0004_execution_metadata`, verified in this phase with a real
@@ -84,8 +101,11 @@ it's already at (`alembic current`).
 
 `scripts/generate_data.py` / `scripts/load_olist.py` populate the
 `analytics`/`olist` schemas the evaluation benchmark and demo questions
-rely on. Run these manually via the Render Shell **once**, after
-migrations, only on a database that doesn't already have this data —
+rely on. Run these manually **once**, the same way as the migration above
+(from your own machine, against the External Database URL, via
+`docker compose exec -e DATABASE_URL=... api python scripts/generate_data.py`
+etc.) — free tier has no Shell tab to run them in remotely. Only run them
+against a database that doesn't already have this data —
 re-running them is not idempotent-safe against a database you care about.
 Neither script (nor the migration itself) runs automatically as part of
 any deploy — seeding and migrating are both deliberate, one-time operator
