@@ -1,61 +1,121 @@
 product_id,name,category,cost,unit_price
-1,Streamlined full-range flexibility,Cloud Storage,149.88,208.48
-2,Decentralized holistic Internet solution,Software,169.38,343.82
-3,Open-architected value-added intranet,Analytics Add-ons,178.29,309.08
-4,Networked global contingency,Software,256.93,464.52
-5,Proactive system-worthy methodology,Software,371.44,811.2
-6,Multi-layered multi-state flexibility,Software,373.78,690.18
-7,Configurable upward-trending interface,Support Plans,162.68,273.71
-8,Configurable intermediate portal,Training,138.41,226.02
-9,Enterprise-wide needs-based frame,Support Plans,185.91,311.56
-10,Inverse bi-directional artificial intelligence,Software,231.49,325.6
-11,Inverse stable frame,Hardware,190.11,383.12
-12,Integrated local portal,Analytics Add-ons,266.91,548.22
-13,Universal interactive concept,Integrations,226.22,351.99
-14,Team-oriented leadingedge hardware,Analytics Add-ons,135.08,212.54
-15,Organized 6thgeneration superstructure,Software,144.84,302.27
-16,Multi-channeled reciprocal Internet solution,Analytics Add-ons,157.65,208.35
-17,Grass-roots scalable utilization,Cloud Storage,46.91,82.96
-18,Centralized asynchronous secured line,Training,74.76,128.39
-19,Sharable impactful hierarchy,Hardware,292.01,560.98
-20,Profound value-added service-desk,Integrations,161.75,234.06
-21,Diverse 4thgeneration circuit,Support Plans,93.67,178.11
-22,Robust systematic toolset,Software,229.44,376.07
-23,Organic 5thgeneration capacity,Hardware,304.66,565.71
-24,Cloned disintermediate time-frame,Support Plans,110.39,147.49
-25,Stand-alone high-level hierarchy,Software,332.45,570.34
-26,Networked non-volatile alliance,Services,371.73,657.97
-27,Robust coherent service-desk,Support Plans,242.98,362.74
-28,Organized holistic hub,Integrations,270.89,386.2
-29,Organic well-modulated archive,Software,30.5,44.82
-30,Re-engineered client-driven moderator,Training,378.75,609.68
-31,Multi-lateral hybrid functionalities,Integrations,163.07,226.2
-32,Streamlined even-keeled encryption,Analytics Add-ons,370.32,797.15
-33,Customizable 4thgeneration support,Integrations,235.8,392.49
-34,Enterprise-wide modular model,Hardware,11.8,23.93
-35,Networked next generation capability,Analytics Add-ons,25.03,54.49
-36,Fundamental zero-defect firmware,Integrations,275.36,377.98
-37,Triple-buffered local data-warehouse,Services,229.44,432.84
-38,Seamless executive solution,Support Plans,20.35,42.41
-39,Pre-emptive dedicated capability,Training,299.95,561.15
-40,Devolved asynchronous knowledge user,Support Plans,342.34,577.23
-41,Enhanced transitional intranet,Services,203.6,343.67
-42,Cross-group systemic functionalities,Integrations,191.65,255.34
-43,Synchronized grid-enabled strategy,Integrations,12.13,21.61
-44,Cloned neutral moratorium,Support Plans,316.79,695.1
-45,Implemented exuding complexity,Analytics Add-ons,138.98,300.59
-46,Universal tertiary standardization,Support Plans,352.72,471.36
-47,Sharable context-sensitive utilization,Analytics Add-ons,155.49,300.91
-48,Multi-lateral multimedia definition,Training,230.38,362.06
-49,Decentralized dedicated utilization,Support Plans,115.43,243.87
-50,Devolved disintermediate utilization,Hardware,72.63,97.37
-51,Proactive 4thgeneration hierarchy,Cloud Storage,312.21,668.84
-52,Reactive object-oriented hub,Services,203.67,418.28
-53,Persistent neutral capacity,Hardware,219.23,308.18
-54,Seamless background architecture,Hardware,386.51,523.27
-55,Integrated hybrid structure,Integrations,385.8,791.37
-56,Up-sized mission-critical moderator,Software,343.7,494.99
-57,Open-source zero administration installation,Analytics Add-ons,83.17,148.16
-58,Re-engineered asynchronous capacity,Analytics Add-ons,241.77,513.56
-59,Intuitive secondary archive,Software,352.48,638.24
-60,Organized maximized software,Training,156.04,258.64
+1,Open-source bottom-line focus group,Integrations,114.91,250.67
+2,Stand-alone optimizing knowledge user,Cloud Storage,142.43,225.66
+3,Expanded background Graphical User Interface,Support Plans,301.0,400.77
+4,Front-line reciprocal capability,Software,376.65,538.06
+5,Cross-group eco-centric utilization,Hardware,146.65,206.39
+6,Right-sized national synergy,Hardware,86.24,148.07
+7,Self-enabling well-modulated encoding,Support Plans,174.05,342.91
+8,Balanced methodical solution,Integrations,147.22,230.66
+9,Grass-roots needs-based concept,Software,396.11,566.94
+10,Switchable web-enabled standardization,Training,190.91,358.28
+11,Upgradable 24hour matrix,Services,274.92,431.92
+12,Extended incremental groupware,Software,366.38,665.95
+13,Cross-platform background middleware,Training,255.33,546.51
+14,Reduced discrete orchestration,Cloud Storage,107.26,167.56
+15,Grass-roots 24hour interface,Integrations,246.89,434.83
+16,Total grid-enabled help-desk,Training,166.73,337.82
+17,Versatile local open architecture,Services,174.72,335.91
+18,Total composite algorithm,Analytics Add-ons,391.94,774.6
+19,User-centric bandwidth-monitored product,Hardware,118.65,236.74
+20,Re-engineered 3rdgeneration secured line,Cloud Storage,192.88,344.47
+21,Grass-roots content-based conglomeration,Integrations,72.35,128.96
+22,Diverse discrete support,Software,79.63,155.04
+23,Balanced upward-trending conglomeration,Integrations,245.36,473.03
+24,Exclusive demand-driven customer loyalty,Hardware,302.9,576.43
+25,De-engineered explicit knowledgebase,Support Plans,258.22,424.49
+26,Centralized stable knowledge user,Services,138.42,283.16
+27,Face-to-face regional challenge,Hardware,33.25,50.29
+28,Automated bottom-line success,Cloud Storage,193.4,278.53
+29,Up-sized demand-driven hierarchy,Support Plans,206.67,332.87
+30,Self-enabling web-enabled task-force,Training,310.55,474.66
+31,Innovative systemic Internet solution,Support Plans,259.71,492.63
+32,Distributed system-worthy architecture,Cloud Storage,349.79,527.45
+33,Diverse methodical implementation,Integrations,315.36,596.3
+34,Adaptive composite hub,Training,152.69,269.02
+35,Automated national conglomeration,Hardware,256.57,368.74
+36,Synergized intangible benchmark,Services,301.44,461.97
+37,Configurable well-modulated complexity,Support Plans,383.18,678.06
+38,Extended asynchronous collaboration,Software,174.72,342.42
+39,Operative bi-directional Internet solution,Hardware,262.83,435.88
+40,Focused tangible concept,Hardware,163.14,246.27
+41,Future-proofed transitional model,Integrations,297.75,466.15
+42,Universal next generation service-desk,Support Plans,365.68,506.69
+43,Progressive optimizing paradigm,Integrations,368.5,487.39
+44,Managed local complexity,Training,71.26,155.05
+45,Right-sized national protocol,Training,89.6,124.25
+46,Re-contextualized didactic knowledge user,Integrations,304.42,429.96
+47,Optimized context-sensitive pricing structure,Cloud Storage,256.09,533.66
+48,Organic even-keeled functionalities,Hardware,362.99,688.65
+49,Fundamental real-time data-warehouse,Services,132.38,224.05
+50,Upgradable zero administration adapter,Cloud Storage,340.73,641.98
+51,Exclusive impactful frame,Software,276.67,592.49
+52,Multi-tiered zero administration monitoring,Hardware,86.23,119.81
+53,Persistent background paradigm,Software,59.33,90.14
+54,Customizable system-worthy capacity,Cloud Storage,284.06,589.22
+55,Business-focused discrete support,Support Plans,71.8,143.78
+56,Total national budgetary management,Software,319.79,701.89
+57,Realigned mission-critical infrastructure,Cloud Storage,227.27,359.66
+58,Streamlined optimal structure,Cloud Storage,195.98,421.43
+59,User-centric client-driven application,Cloud Storage,117.46,189.03
+60,Programmable contextually-based monitoring,Hardware,393.7,765.19
+61,Focused clear-thinking encoding,Analytics Add-ons,291.65,610.85
+62,Business-focused multimedia portal,Hardware,313.44,455.65
+63,Quality-focused asynchronous encoding,Training,309.8,460.08
+64,Public-key neutral artificial intelligence,Training,237.77,433.42
+65,Mandatory multi-tasking monitoring,Hardware,376.48,775.34
+66,Cross-group empowering firmware,Support Plans,237.69,325.89
+67,Managed neutral challenge,Software,212.82,439.64
+68,Enhanced 6thgeneration interface,Support Plans,116.75,187.83
+69,Pre-emptive demand-driven challenge,Cloud Storage,119.88,199.67
+70,Face-to-face tangible productivity,Services,297.38,477.56
+71,Cross-group multi-state circuit,Training,140.56,298.03
+72,Secured leadingedge archive,Integrations,294.2,417.09
+73,Optimized uniform productivity,Hardware,381.56,693.24
+74,Quality-focused attitude-oriented support,Services,181.33,259.9
+75,Virtual fresh-thinking knowledgebase,Software,47.96,102.43
+76,Down-sized systemic focus group,Training,269.95,544.8
+77,Mandatory 4thgeneration alliance,Hardware,13.71,20.71
+78,Virtual 24/7 time-frame,Analytics Add-ons,316.93,496.95
+79,Assimilated zero-defect secured line,Services,215.0,353.32
+80,Team-oriented 4thgeneration workforce,Cloud Storage,201.0,334.64
+81,Up-sized 4thgeneration artificial intelligence,Hardware,232.08,472.42
+82,Inverse composite system engine,Services,211.4,382.23
+83,User-friendly scalable paradigm,Hardware,136.27,229.64
+84,Configurable attitude-oriented solution,Training,119.79,233.29
+85,Ergonomic mission-critical workforce,Software,171.97,294.43
+86,Cross-platform leadingedge toolset,Software,359.01,508.15
+87,Public-key secondary hub,Training,62.79,87.7
+88,Centralized zero tolerance product,Training,136.66,217.75
+89,User-friendly real-time algorithm,Services,85.0,156.62
+90,Up-sized coherent help-desk,Support Plans,176.58,250.98
+91,Intuitive homogeneous service-desk,Support Plans,62.06,111.41
+92,Customizable motivating project,Analytics Add-ons,306.71,473.15
+93,Implemented web-enabled frame,Support Plans,50.35,96.97
+94,Fundamental cohesive artificial intelligence,Analytics Add-ons,269.45,357.14
+95,Quality-focused client-server policy,Hardware,114.41,197.03
+96,Synchronized object-oriented moratorium,Hardware,194.15,261.53
+97,Polarized executive matrix,Support Plans,88.0,140.58
+98,Programmable zero administration archive,Software,294.79,387.36
+99,Distributed context-sensitive task-force,Cloud Storage,379.83,654.14
+100,Horizontal motivating process improvement,Support Plans,96.48,192.03
+101,Balanced foreground implementation,Services,381.73,530.68
+102,Phased 6thgeneration middleware,Training,136.86,268.48
+103,Optional maximized algorithm,Software,227.56,415.47
+104,Balanced radical application,Support Plans,283.62,497.51
+105,Adaptive stable firmware,Integrations,87.71,161.35
+106,Fully-configurable homogeneous hardware,Cloud Storage,183.46,293.96
+107,Sharable global array,Training,36.45,70.69
+108,Multi-lateral uniform model,Training,281.85,564.18
+109,Grass-roots multi-tasking collaboration,Support Plans,172.48,345.03
+110,Open-architected homogeneous open system,Integrations,357.74,551.82
+111,Decentralized disintermediate installation,Integrations,116.86,220.69
+112,Distributed encompassing migration,Support Plans,370.2,530.6
+113,Focused fresh-thinking hub,Integrations,65.01,113.5
+114,Switchable actuating hierarchy,Software,246.72,321.32
+115,Integrated composite toolset,Services,130.05,191.72
+116,Re-engineered homogeneous superstructure,Services,80.89,151.15
+117,Balanced neutral structure,Cloud Storage,46.64,97.33
+118,Balanced responsive leverage,Training,265.7,357.13
+119,Business-focused incremental database,Support Plans,100.94,181.96
+120,Front-line incremental portal,Services,233.4,437.18
