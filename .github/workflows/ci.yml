@@ -1,0 +1,94 @@
+# Runs on every push and pull request: the full test suite against a real
+# PostgreSQL 16 database, plus a build of both Docker images.
+#
+# No AI provider key is used here — the four test files that call a live
+# LLM are deselected (same list as the README's "run without an AI key"
+# command), and every other test uses tests/fakes.py::ScriptedLLMClient.
+
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: Tests (pytest + PostgreSQL)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: bi_agent
+          POSTGRES_USER: bi_app
+          POSTGRES_PASSWORD: ci_app_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U bi_app -d bi_agent"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    # Throwaway values for the disposable CI database only — not real secrets.
+    env:
+      DATABASE_URL: postgresql+asyncpg://bi_app:ci_app_password@localhost:5432/bi_agent
+      READONLY_DB_USER: readonly_analyst
+      READONLY_DB_PASSWORD: ci_readonly_password
+      ANALYTICS_DATABASE_URL: postgresql://readonly_analyst:ci_readonly_password@localhost:5432/bi_agent
+      SECRET_KEY: ci-only-not-a-real-secret-key-0000000000000000
+      LLM_PROVIDER: anthropic
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Create database tables
+        run: python -m alembic upgrade head
+
+      - name: Load synthetic seed data
+        run: python scripts/seed_database.py
+
+      # test_run_query_against_olist_schema needs the Olist dataset, which
+      # comes from Kaggle and is not committed (see README), so it is
+      # skipped here. It runs locally once scripts/load_olist.py has loaded it.
+      - name: Run tests
+        run: >-
+          python -m pytest tests/ -q
+          --ignore=tests/e2e
+          --deselect tests/agents/test_critic_live_llm.py
+          --deselect tests/agents/test_report_agent_live_llm.py
+          --deselect tests/api/test_analyze_live_llm.py
+          --deselect tests/api/test_evaluation.py
+          --deselect tests/integration/test_database_tools.py::test_run_query_against_olist_schema
+
+  docker:
+    name: Docker images build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build API image
+        run: docker build -t aibia-api .
+
+      - name: Build frontend image
+        run: docker build -t aibia-frontend ./frontend
