@@ -158,17 +158,24 @@ def _render_progress(status: str, stage_statuses) -> None:
     )
 
 
+def _escape_dollars(text) -> str:
+    """Streamlit's markdown renders `$...$` as LaTeX, so two dollar amounts
+    in one sentence ("from $159,030 to $141,588") turn into italic math.
+    Escaping keeps currency values as plain text."""
+    return str(text).replace("$", "\\$")
+
+
 def _render_report_section(section) -> None:
     if section.kind == "text":
         st.subheader(section.title)
-        st.write(section.content)
+        st.write(_escape_dollars(section.content))
     elif section.kind == "list":
         st.subheader(section.title)
         for item in section.content:
-            st.write(f"- {item}")
+            st.write(f"- {_escape_dollars(item)}")
     elif section.kind == "warning":
         st.subheader(section.title)
-        st.warning(section.content)
+        st.warning(_escape_dollars(section.content))
     elif section.kind == "json":
         with st.expander(section.title):
             st.json(section.content)

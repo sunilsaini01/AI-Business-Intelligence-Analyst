@@ -257,9 +257,9 @@ def generate(seed_dir: Path, n_customers: int, months: int, n_products: int) -> 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--customers", type=int, default=5000)
+    parser.add_argument("--customers", type=int, default=500)
     parser.add_argument("--months", type=int, default=20)
-    parser.add_argument("--products", type=int, default=120)
+    parser.add_argument("--products", type=int, default=60)
     parser.add_argument("--out", type=str, default="data/seeds")
     args = parser.parse_args()
 
